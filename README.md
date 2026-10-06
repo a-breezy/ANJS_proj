@@ -2,11 +2,11 @@
 CCNY Fall 2026 Software Engineering Project
 
 ## Team Members
-Zeferino Franco Salgado
-Nadim Saddique
-Jigmi Sherpa
-Sarinda Shrestha
-Ambrose Wilkinson
+- Zeferino Franco Salgado
+- Nadim Saddique
+- Jigmi Sherpa
+- Sarinda Shrestha
+- Ambrose Wilkinson
 
 ## Introduction
 The goal is to create an AI enabled project building out a multimodal bookstore that can facilitate a wide range of functions.
