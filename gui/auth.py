@@ -1,26 +1,62 @@
-"""Authentication hooks - DEMO STUBS, not real security.
+"""Authentication hooks backed by the local :mod:`gui.store`.
 
-The GUI calls these two functions and nothing else, so wiring up the real
-backend later only means replacing the bodies below.
+The GUI calls these functions and nothing else, so wiring up the real backend
+later only means replacing the bodies below.
 
-* ``authenticate_password`` accepts any well-formed email with a non-empty
-  password. It never checks a real credential.
-* ``authenticate_face`` always "recognises" a demo user. Hooking up a real
-  camera feed (e.g. ``QtMultimedia.QCamera``) and a face-recognition service
-  belongs here.
+* ``register`` creates an account. Passwords are salted and hashed with
+  PBKDF2, but the store is a local JSON file, so this is still a prototype,
+  not production security.
+* ``authenticate_password`` only accepts an email/password pair that was
+  registered first. There are no accounts until someone signs up.
+* ``authenticate_face`` never recognizes anyone yet: no account has a face
+  enrolled. Hooking up a real camera feed (e.g. ``QtMultimedia.QCamera``) and
+  a face-recognition service belongs here.
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
+import os
+
 from .data import User
+from .store import Store
+
+MIN_PASSWORD = 8
+_ITERATIONS = 200_000
 
 
-def authenticate_password(email: str, password: str) -> User | None:
-    email = email.strip()
-    if "@" not in email or not password:
+class AuthError(ValueError):
+    """Raised by ``register`` with a message that can be shown to the user."""
+
+
+def _hash(password: str, salt: bytes) -> str:
+    return hashlib.pbkdf2_hmac("sha256", password.encode(), salt, _ITERATIONS).hex()
+
+
+def register(store: Store, name: str, email: str, password: str) -> User:
+    name, email = name.strip(), email.strip().lower()
+    if not name:
+        raise AuthError("Enter your name.")
+    local, _, domain = email.partition("@")
+    if not local or "." not in domain:
+        raise AuthError("Enter a valid email address.")
+    if len(password) < MIN_PASSWORD:
+        raise AuthError(f"Use at least {MIN_PASSWORD} characters for your password.")
+    if store.get_user(email):
+        raise AuthError("An account with that email already exists. Sign in instead.")
+    salt = os.urandom(16)
+    store.add_user({"name": name, "email": email, "salt": salt.hex(), "hash": _hash(password, salt)})
+    return User(name=name, email=email)
+
+
+def authenticate_password(store: Store, email: str, password: str) -> User | None:
+    record = store.get_user(email)
+    if record is None or not password:
         return None
-    local = email.split("@", 1)[0]
-    return User(name=local.replace(".", " ").title() or "Reader", email=email)
+    if not hmac.compare_digest(record["hash"], _hash(password, bytes.fromhex(record["salt"]))):
+        return None
+    return User(name=record["name"], email=record["email"])
 
 
 def authenticate_face() -> User | None:
-    return User(name="Reader", email="reader@example.com")
+    return None

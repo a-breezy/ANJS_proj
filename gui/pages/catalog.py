@@ -69,33 +69,61 @@ class RecoCard(QWidget):
         col.addStretch()
 
 
-class BookGrid(QWidget):
-    """Two-column grid that rebuilds from a list of books."""
+# (minimum grid width in px, columns), widest first. A phone-sized window
+# shows two cards per row; the row grows to three and then four on desktop.
+BREAKPOINTS = ((760, 4), (540, 3), (0, 2))
+MAX_COLUMNS = BREAKPOINTS[0][1]
 
-    def __init__(self, factory, columns: int = 2) -> None:
+
+def columns_for(width: int) -> int:
+    return next(cols for min_width, cols in BREAKPOINTS if width >= min_width)
+
+
+class BookGrid(QWidget):
+    """Responsive grid of book cards that rebuilds from a list of books."""
+
+    def __init__(self, factory) -> None:
         super().__init__()
         self._factory = factory
-        self._columns = columns
+        self._cards: list[QWidget] = []
+        self._columns = columns_for(0)
         self._grid = QGridLayout(self)
         self._grid.setContentsMargins(0, 0, 0, 0)
         self._grid.setSpacing(12)
-        for col in range(columns):
-            self._grid.setColumnStretch(col, 1)
+
+    @property
+    def columns(self) -> int:
+        return self._columns
 
     def count(self) -> int:
         """Number of book cards currently shown."""
-        return sum(1 for i in range(self._grid.count()) if self._grid.itemAt(i).widget() is not None)
+        return len(self._cards)
+
+    def set_factory(self, factory) -> None:
+        self._factory = factory
 
     def set_books(self, books: list[Book]) -> None:
-        while self._grid.count():
-            item = self._grid.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.setParent(None)
-                widget.deleteLater()
-        for i, book in enumerate(books):
-            self._grid.addWidget(self._factory(book), i // self._columns, i % self._columns, Qt.AlignmentFlag.AlignTop)
-        self._grid.setRowStretch(len(books) // self._columns + 1, 1)
+        for card in self._cards:
+            self._grid.removeWidget(card)
+            card.setParent(None)
+            card.deleteLater()
+        self._cards = [self._factory(book) for book in books]
+        self._place()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        columns = columns_for(self.width())
+        if columns != self._columns:
+            self._columns = columns
+            self._place()
+
+    def _place(self) -> None:
+        for card in self._cards:
+            self._grid.removeWidget(card)
+        for col in range(MAX_COLUMNS):
+            self._grid.setColumnStretch(col, 1 if col < self._columns else 0)
+        for i, card in enumerate(self._cards):
+            self._grid.addWidget(card, i // self._columns, i % self._columns, Qt.AlignmentFlag.AlignTop)
 
 
 class HorizontalRow(QScrollArea):

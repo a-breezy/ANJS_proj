@@ -2,11 +2,13 @@
 
 Everything here is PLACEHOLDER data (invented titles and authors) so the
 screens have something to show. Replace the functions in this module with
-calls to the real catalogue / orders backend once it exists.
+calls to the real catalogue backend once it exists. Accounts and orders are
+not sample data any more; they live in :mod:`gui.store`.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 CATEGORIES = ["All", "Fiction", "Non-fiction", "Textbooks"]
 
@@ -38,8 +40,27 @@ class User:
 @dataclass(frozen=True)
 class Order:
     number: int
+    placed: str  # ISO date
     status: str
     progress: float  # 0.0 - 1.0
+    book_ids: tuple[int, ...]
+
+    @classmethod
+    def from_record(cls, record: dict) -> "Order":
+        return cls(record["number"], record["placed"], record["status"], record["progress"], tuple(record["book_ids"]))
+
+    @property
+    def books(self) -> list[Book]:
+        return [b for b in map(book_by_id, self.book_ids) if b is not None]
+
+    @property
+    def active(self) -> bool:
+        return self.status != "delivered"
+
+    @property
+    def placed_text(self) -> str:
+        d = date.fromisoformat(self.placed)
+        return f"{d:%b} {d.day}, {d.year}"
 
 
 # Listed in bestseller order.
@@ -54,7 +75,9 @@ SAMPLE_BOOKS = [
     Book(8, "Data Structures Lab", "Lina Cho", 58.75, "Textbooks", 3),
 ]
 
-SAMPLE_ORDER = Order(number=1042, status="on the way", progress=0.6)
+
+def book_by_id(book_id: int) -> Book | None:
+    return next((b for b in SAMPLE_BOOKS if b.id == book_id), None)
 
 
 def books_in(category: str = "All") -> list[Book]:

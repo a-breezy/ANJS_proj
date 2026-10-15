@@ -230,6 +230,9 @@ QLabel[role="field"] { font-size: 14px; font-weight: 700; }
 QLabel[role="book"] { font-size: 15px; font-weight: 800; }
 QLabel[role="author"] { color: $muted; font-size: 13px; }
 QLabel[role="onhighlight"] { color: $on_highlight; font-size: 16px; font-weight: 800; }
+QLabel[role="bubble_user"] { background: $primary; color: $on_primary; border-radius: 16px; padding: 10px 14px; font-size: 15px; }
+QLabel[role="bubble_bot"] { background: $surface; color: $text; border: 1px solid $border; border-radius: 16px; padding: 10px 14px; font-size: 15px; }
+QLabel[role="bubble_error"] { background: transparent; color: $error; border: 1.5px solid $error; border-radius: 16px; padding: 10px 14px; font-size: 14px; }
 
 QScrollArea { background: transparent; border: none; }
 QScrollArea > QWidget > QWidget { background: transparent; }

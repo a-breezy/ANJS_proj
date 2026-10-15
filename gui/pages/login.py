@@ -14,7 +14,8 @@ from PySide6.QtWidgets import (
 )
 
 from .. import auth
-from ..widgets import IconButton, Logo, Page, Viewfinder, make_button, make_label
+from ..store import Store
+from ..widgets import Column, IconButton, Logo, Page, Viewfinder, make_button, make_label
 
 SCAN_MS = 2200
 CAPTION_IDLE = "Look straight at the camera and hold still"
@@ -23,12 +24,16 @@ CAPTION_IDLE = "Look straight at the camera and hold still"
 class LoginPage(Page):
     signed_in = Signal(object)  # data.User
     back_requested = Signal()
+    sign_up_requested = Signal()
 
-    def __init__(self) -> None:
+    def __init__(self, store: Store) -> None:
         super().__init__()
-        root = QVBoxLayout(self)
-        root.setContentsMargins(22, 20, 22, 18)
-        root.setSpacing(0)
+        self.store = store
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        column = Column(max_width=460, margins=(22, 20, 22, 18), spacing=0)
+        outer.addWidget(column)
+        root = column.col
 
         # Header: back button, centred logo + name
         header = QHBoxLayout()
@@ -86,7 +91,7 @@ class LoginPage(Page):
         new_row.addWidget(make_label("New here?", "caption"))
         new_row.addSpacing(4)
         create = make_button("Create an account", "linkbold", height=26)
-        create.clicked.connect(self._create_account)
+        create.clicked.connect(self.sign_up_requested)
         new_row.addWidget(create)
         new_row.addStretch()
         root.addLayout(new_row)
@@ -200,7 +205,7 @@ class LoginPage(Page):
         user = auth.authenticate_face()
         self._cancel_scan()
         if user is None:
-            self.caption.setText("We couldn't recognise you. Try again or use your password.")
+            self.caption.setText("Face ID isn't set up for any account yet. Use your password instead.")
             return
         self.signed_in.emit(user)
 
@@ -210,7 +215,7 @@ class LoginPage(Page):
             return self._show_pw_error("Enter your email address.")
         if not password:
             return self._show_pw_error("Enter your password.")
-        user = auth.authenticate_password(email, password)
+        user = auth.authenticate_password(self.store, email, password)
         if user is None:
             return self._show_pw_error("That email or password doesn't look right.")
         self.pw_error.hide()
@@ -219,6 +224,3 @@ class LoginPage(Page):
     def _show_pw_error(self, message: str) -> None:
         self.pw_error.setText(message)
         self.pw_error.show()
-
-    def _create_account(self) -> None:
-        QMessageBox.information(self, "Create an account", "Account creation isn't built yet.")

@@ -5,12 +5,15 @@ from PySide6.QtCore import QEasingCurve, QPointF, QRectF, QSize, Qt, QVariantAni
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QAbstractButton,
+    QButtonGroup,
     QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -38,6 +41,39 @@ class Page(QWidget):
         super().__init__(parent)
         self.setObjectName("page")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+
+
+class Column(QWidget):
+    """Vertical layout whose content is capped at ``max_width`` and centred.
+
+    On a phone-sized window it behaves like a plain QVBoxLayout with the given
+    margins; on a wide desktop window the extra width becomes side margins so
+    lines of text and forms don't stretch across the whole screen.
+    """
+
+    def __init__(self, max_width: int, margins=(16, 14, 16, 18), spacing: int = 12, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._max_width = max_width
+        self._margins = margins
+        self.col = QVBoxLayout(self)
+        self.col.setContentsMargins(*margins)
+        self.col.setSpacing(spacing)
+
+    def resizeEvent(self, event) -> None:
+        left, top, right, bottom = self._margins
+        extra = max(0, (self.width() - left - right - self._max_width) // 2)
+        self.col.setContentsMargins(left + extra, top, right + extra, bottom)
+        super().resizeEvent(event)
+
+
+def scroll_column(max_width: int = 1200, margins=(16, 14, 16, 18), spacing: int = 12) -> tuple[QScrollArea, QVBoxLayout]:
+    """A vertical scroll area holding a :class:`Column`; returns (scroll area, content layout)."""
+    scroll = QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    content = Column(max_width, margins, spacing)
+    scroll.setWidget(content)
+    return scroll, content.col
 
 
 class IconButton(QPushButton):
@@ -317,26 +353,77 @@ class NavButton(QAbstractButton):
 
 
 class NavBar(QFrame):
-    """Exclusive row of NavButtons."""
+    """Exclusive row of NavButtons, centred and capped in width on desktop."""
 
     selected = Signal(str)
+    MAX_ITEM_WIDTH = 120
 
     def __init__(self, items: list[tuple[str, str, str]], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("navbar")
-        row = QHBoxLayout(self)
-        row.setContentsMargins(8, 4, 8, 6)
-        row.setSpacing(0)
+        self._row = QHBoxLayout(self)
+        self._row.setContentsMargins(8, 4, 8, 6)
+        self._row.setSpacing(0)
         self._buttons: dict[str, NavButton] = {}
+        self.set_items(items)
+
+    def set_items(self, items: list[tuple[str, str, str]]) -> None:
+        while self._row.count():
+            widget = self._row.takeAt(0).widget()
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
+        self._buttons = {}
+        self._row.addStretch()
         for key, label, icon in items:
             btn = NavButton(key, label, icon)
+            btn.setMaximumWidth(self.MAX_ITEM_WIDTH)
             btn.clicked.connect(lambda _=False, k=key: self.selected.emit(k))
             self._buttons[key] = btn
-            row.addWidget(btn)
+            self._row.addWidget(btn, 1)
+        self._row.addStretch()
+
+    def keys(self) -> list[str]:
+        return list(self._buttons)
 
     def set_current(self, key: str) -> None:
         for k, btn in self._buttons.items():
             btn.setChecked(k == key)
+
+
+class SegmentedControl(QFrame):
+    """Pill-shaped row of mutually exclusive options (e.g. Tracking | History)."""
+
+    changed = Signal(str)
+
+    def __init__(self, options: list[tuple[str, str]], height: int = 44, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("segment")
+        row = QHBoxLayout(self)
+        row.setContentsMargins(4, 4, 4, 4)
+        row.setSpacing(4)
+        group = QButtonGroup(self)
+        group.setExclusive(True)
+        self._buttons: dict[str, IconButton] = {}
+        for key, label in options:
+            btn = IconButton(label, variant="segment", height=height)
+            btn.setCheckable(True)
+            btn.clicked.connect(lambda _=False, k=key: self.set_current(k))
+            group.addButton(btn)
+            row.addWidget(btn, 1)
+            self._buttons[key] = btn
+        self._current = options[0][0]
+        self._buttons[self._current].setChecked(True)
+
+    @property
+    def current(self) -> str:
+        return self._current
+
+    def set_current(self, key: str) -> None:
+        self._buttons[key].setChecked(True)
+        if key != self._current:
+            self._current = key
+            self.changed.emit(key)
 
 
 class Viewfinder(QWidget):
