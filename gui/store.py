@@ -7,6 +7,7 @@ re-implementing the methods of :class:`Store`.
 """
 from __future__ import annotations
 
+import math
 import json
 import os
 from datetime import date
@@ -51,6 +52,47 @@ class Store:
             raise KeyError(email)
         self._data["users"][email] = {**record, "email": email}
         self._save()
+
+    def add_face_template(self, email: str, features: list[float]) -> None:
+        """Save one face scan for an existing account."""
+        record = self.get_user(email)
+
+        if record is None:
+            raise ValueError("Account not found.")
+
+        if len(features) != 128 or not all(math.isfinite(x) for x in features):
+            raise ValueError("Invalid face features.")
+
+        templates = record.setdefault("face_templates", [])
+
+        if len(templates) >= 4:
+            raise ValueError("This account already has 4 face scans.")
+
+        templates.append([float(x) for x in features])
+        self._save()
+
+    def remove_face_templates(self, email: str) -> None:
+        """Remove saved face scans from an account."""
+        record = self.get_user(email)
+
+        if record is None:
+            raise ValueError("Account not found.")
+
+        record.pop("face_templates", None)
+        self._save()
+
+    """Finds accounts that have enrolled faces"""
+    def enrolled_face_accounts(self) -> list[dict]: 
+        """Find accounts that have face scans saved."""
+        return [
+            {
+                "name": record["name"],
+                "email": record["email"],
+                "face_templates": record["face_templates"],
+            }
+            for record in self._data["users"].values()
+            if record.get("face_templates")
+        ]
 
     # --- orders -----------------------------------------------------------
     def orders_for(self, email: str) -> list[dict]:

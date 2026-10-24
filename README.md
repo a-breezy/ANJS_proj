@@ -46,3 +46,9 @@ python -m unittest discover -s tests -v   # headless smoke tests (no Ollama need
   Use another model with `ANJS_LLM_MODEL=<name>`, or another server with `ANJS_LLM_HOST=http://host:11434`.
 - **Theme switch:** `View > Mint theme` (Ctrl+T) in the menu bar, or the *Appearance* button on the Account tab once signed in. Colours live in `gui/theme.py`, so a third theme is one more `Palette`.
 - **Placeholders to replace:** `gui/data.py` holds invented sample books. The camera box is a drawn placeholder, not a live camera feed. Order status never moves past "processing" because there is no shipping backend yet.
+
+### Face ID Login
+
+See [FACE_ID_SETUP.md](FACE_ID_SETUP.md) for setup,
+account creation, face enrollment, and testing on
+Windows and macOS.
