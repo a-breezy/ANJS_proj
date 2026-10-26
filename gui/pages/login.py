@@ -1,7 +1,7 @@
 """Sign-in screen: Face ID tab and password tab (wireframe 1)."""
 from __future__ import annotations
 
-from PySide6.QtCore import QTimer, Qt, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
     QFrame,
@@ -14,10 +14,10 @@ from PySide6.QtWidgets import (
 )
 
 from .. import auth
+from ..face_dialog import FaceScanDialog
 from ..store import Store
 from ..widgets import Column, IconButton, Logo, Page, Viewfinder, make_button, make_label
 
-SCAN_MS = 2200
 CAPTION_IDLE = "Look straight at the camera and hold still"
 
 
@@ -96,9 +96,6 @@ class LoginPage(Page):
         new_row.addStretch()
         root.addLayout(new_row)
 
-        self._scan_timer = QTimer(self)
-        self._scan_timer.setSingleShot(True)
-        self._scan_timer.timeout.connect(self._finish_scan)
         self._set_mode(face=True)
 
     # --- panels ---------------------------------------------------------
@@ -167,10 +164,12 @@ class LoginPage(Page):
         self.password.clear()
         self.show_pw.setChecked(False)
         self.pw_error.hide()
+        self.caption.setText(CAPTION_IDLE)
         self._set_mode(face=True)
 
     def _set_mode(self, face: bool) -> None:
         self._cancel_scan()
+        self.caption.setText(CAPTION_IDLE)
         self.seg_face.setChecked(face)
         self.seg_password.setChecked(not face)
         self.panels.setCurrentIndex(0 if face else 1)
@@ -185,29 +184,26 @@ class LoginPage(Page):
         self.show_pw.setText("Hide" if shown else "Show")
 
     def _start_scan(self) -> None:
-        if self._scan_timer.isActive():
+        if not self.store.enrolled_face_accounts():
+            self.caption.setText("No face enrolled yet. Create an account and run the enrollment script first.")
             return
+
         self.scan_btn.setEnabled(False)
-        self.scan_btn.setText("Scanning…")
-        self.caption.setProperty("role", "caption")
-        self.caption.setText("Scanning. Hold still.")
-        self.viewfinder.start()
-        self._scan_timer.start(SCAN_MS)
+        self.scan_btn.setText("Scanning...")
+        self.caption.setText("Camera window opened. Look straight at it.")
+        try:
+            dialog = FaceScanDialog(self.store, self)
+            if dialog.exec() == dialog.DialogCode.Accepted and dialog.user is not None:
+                self.signed_in.emit(dialog.user)
+            else:
+                self.caption.setText("Scan canceled or not recognized. Try again or use password.")
+        finally:
+            self._cancel_scan()
 
     def _cancel_scan(self) -> None:
-        self._scan_timer.stop()
         self.viewfinder.stop()
         self.scan_btn.setEnabled(True)
         self.scan_btn.setText("Scan my face")
-        self.caption.setText(CAPTION_IDLE)
-
-    def _finish_scan(self) -> None:
-        user = auth.authenticate_face()
-        self._cancel_scan()
-        if user is None:
-            self.caption.setText("Face ID isn't set up for any account yet. Use your password instead.")
-            return
-        self.signed_in.emit(user)
 
     def _submit_password(self) -> None:
         email, password = self.email.text(), self.password.text()

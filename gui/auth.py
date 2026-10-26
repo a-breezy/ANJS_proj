@@ -8,9 +8,8 @@ later only means replacing the bodies below.
   not production security.
 * ``authenticate_password`` only accepts an email/password pair that was
   registered first. There are no accounts until someone signs up.
-* ``authenticate_face`` never recognizes anyone yet: no account has a face
-  enrolled. Hooking up a real camera feed (e.g. ``QtMultimedia.QCamera``) and
-  a face-recognition service belongs here.
+* ``authenticate_face`` matches a face feature vector to an enrolled account.
+  The actual webcam is handled by the FaceScanDialog worker.
 """
 from __future__ import annotations
 
@@ -58,5 +57,6 @@ def authenticate_password(store: Store, email: str, password: str) -> User | Non
     return User(name=record["name"], email=record["email"])
 
 
-def authenticate_face() -> User | None:
-    return None
+def authenticate_face(store: Store, features: list[float]) -> User | None:
+    from .face_login import find_user_by_face
+    return find_user_by_face(store, features)
