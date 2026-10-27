@@ -45,7 +45,13 @@ def register(store: Store, name: str, email: str, password: str) -> User:
     if store.get_user(email):
         raise AuthError("An account with that email already exists. Sign in instead.")
     salt = os.urandom(16)
-    store.add_user({"name": name, "email": email, "salt": salt.hex(), "hash": _hash(password, salt)})
+    store.add_user({
+    "name": name,
+    "email": email,
+    "salt": salt.hex(),
+    "hash": _hash(password, salt),
+    "role": "RC"
+})
     return User(name=name, email=email)
 
 
@@ -55,7 +61,11 @@ def authenticate_password(store: Store, email: str, password: str) -> User | Non
         return None
     if not hmac.compare_digest(record["hash"], _hash(password, bytes.fromhex(record["salt"]))):
         return None
-    return User(name=record["name"], email=record["email"])
+    return User(
+    name=record["name"],
+    email=record["email"],
+    role=record.get("role", "RC")
+)
 
 
 def authenticate_face() -> User | None:

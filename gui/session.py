@@ -45,7 +45,9 @@ class Session(QObject):
 
     @property
     def cart_total(self) -> float:
-        return sum(b.price for b in self.cart)
+        subtotal = sum(b.price for b in self.cart)
+        discount = self.user.discount if self.user else 0.0
+        return round(subtotal * (1 - discount), 2)
 
     # --- orders -----------------------------------------------------------
     @property
@@ -65,9 +67,17 @@ class Session(QObject):
         return [(book, order) for order in self.orders for book in order.books]
 
     def checkout(self) -> Order | None:
-        if self.user is None or not self.cart:
+        if self.user is None or self.user.is_visitor or not self.cart:
             return None
         order = Order.from_record(self.store.add_order(self.user.email, [b.id for b in self.cart]))
+        updated_user = self.store.get_user(self.user.email)
+        if updated_user is not None and updated_user["role"] != self.user.role:
+            self.user = User(
+                name=self.user.name,
+                email=self.user.email,
+                role=updated_user["role"]
+            )
+            self.user_changed.emit()
         self.cart.clear()
         self.cart_changed.emit()
         self.orders_changed.emit()
