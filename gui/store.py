@@ -12,6 +12,7 @@ import json
 import os
 from datetime import date
 from pathlib import Path
+from .data import book_by_id
 
 DEFAULT_DIR = Path(__file__).resolve().parents[1] / ".data"
 FIRST_ORDER_NUMBER = 1001
@@ -48,9 +49,19 @@ class Store:
 
     def add_user(self, record: dict) -> None:
         email = record["email"].strip().lower()
+
         if email in self._data["users"]:
             raise KeyError(email)
-        self._data["users"][email] = {**record, "email": email}
+
+        self._data["users"][email] = {
+            **record,
+            "email": email,
+            "role": "RC",
+            "shipping_address": "",
+            "purchase_count": 0,
+            "total_spent": 0.0,
+        }
+
         self._save()
 
     def add_face_template(self, email: str, features: list[float]) -> None:
@@ -99,14 +110,36 @@ class Store:
         return list(self._data["orders"].get(email.strip().lower(), []))
 
     def add_order(self, email: str, book_ids: list[int]) -> dict:
+        order_total = 0.0
+        for book_id in book_ids:
+            book = book_by_id(book_id)
+            if book is not None:
+                order_total += book.price
+
+
+        user = self.get_user(email)
+        discount_rate = 0.10 if user and user["role"] == "VC" else 0.0
+        discount_amount = round(order_total * discount_rate, 2)
+        final_total = round(order_total - discount_amount, 2)
+
         order = {
             "number": self._data["next_order"],
             "placed": date.today().isoformat(),
             "status": "processing",
             "progress": 0.15,
             "book_ids": list(book_ids),
+            "total": final_total,
+            "discount_amount": discount_amount,
         }
         self._data["next_order"] += 1
         self._data["orders"].setdefault(email.strip().lower(), []).append(order)
+        user = self.get_user(email)
+        if user is not None:
+            user["purchase_count"] = user.get("purchase_count", 0) + 1
+            user["total_spent"] = round(user.get("total_spent", 0.0) + final_total, 2)
+            if user["role"] == "RC" and (
+                user["purchase_count"] > 3 or user["total_spent"] > 200
+            ):
+                user["role"] = "VC"
         self._save()
         return order

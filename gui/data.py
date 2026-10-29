@@ -31,11 +31,39 @@ class Book:
 class User:
     name: str
     email: str
+    role: str = "RC"
 
     @property
     def initial(self) -> str:
         return (self.name[:1] or "?").upper()
 
+    @property
+    def is_admin(self) -> bool:
+        return self.role == "SU"
+
+    @property
+    def is_vip(self) -> bool:
+        return self.role == "VC"
+
+    @property
+    def discount(self) -> float:
+        return 0.10 if self.is_vip else 0.0
+
+    @property
+    def can_use_ai(self) -> bool:
+        return self.role in ("RC", "VC", "SU")
+
+    @property
+    def is_visitor(self) -> bool:
+        return self.role == "VS"
+
+    @property
+    def can_manage_books(self) -> bool:
+        return self.role == "SU"
+
+    @property
+    def can_view_history(self) -> bool:
+        return self.role in ("RC", "VC", "SU")
 
 @dataclass(frozen=True)
 class Order:
@@ -44,10 +72,20 @@ class Order:
     status: str
     progress: float  # 0.0 - 1.0
     book_ids: tuple[int, ...]
+    total: float = 0.0
+    discount_amount: float = 0.0
 
     @classmethod
     def from_record(cls, record: dict) -> "Order":
-        return cls(record["number"], record["placed"], record["status"], record["progress"], tuple(record["book_ids"]))
+        return cls(
+            record["number"],
+            record["placed"],
+            record["status"],
+            record["progress"],
+            tuple(record["book_ids"]),
+            record.get("total", 0.0),
+            record.get("discount_amount", 0.0),
+        )
 
     @property
     def books(self) -> list[Book]:
