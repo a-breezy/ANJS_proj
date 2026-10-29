@@ -1,3 +1,4 @@
+
 """In-memory app state: who is signed in, what is in the cart, and their orders."""
 from __future__ import annotations
 
@@ -55,7 +56,10 @@ class Session(QObject):
         """The signed-in user's orders, newest first."""
         if self.user is None:
             return []
-        return [Order.from_record(r) for r in reversed(self.store.orders_for(self.user.email))]
+        return [
+            Order.from_record(r)
+            for r in reversed(self.store.orders_for(self.user.email))
+        ]
 
     @property
     def active_orders(self) -> list[Order]:
@@ -64,20 +68,50 @@ class Session(QObject):
     @property
     def purchases(self) -> list[tuple[Book, Order]]:
         """Every book the user has bought, newest first."""
-        return [(book, order) for order in self.orders for book in order.books]
+        return [
+            (book, order)
+            for order in self.orders
+            for book in order.books
+        ]
 
     def checkout(self) -> Order | None:
-        if self.user is None or self.user.is_visitor or not self.cart:
+        if not self.cart:
             return None
-        order = Order.from_record(self.store.add_order(self.user.email, [b.id for b in self.cart]))
+
+        # Guest checkout
+        if self.user is None or self.user.is_visitor:
+            order = Order.from_record(
+                self.store.add_order(
+                    "guest",
+                    [book.id for book in self.cart]
+                )
+            )
+            self.cart.clear()
+            self.cart_changed.emit()
+            self.orders_changed.emit()
+            return order
+
+        # Registered customer checkout
+        order = Order.from_record(
+            self.store.add_order(
+                self.user.email,
+                [book.id for book in self.cart]
+            )
+        )
+
         updated_user = self.store.get_user(self.user.email)
-        if updated_user is not None and updated_user["role"] != self.user.role:
+
+        if (
+            updated_user is not None
+            and updated_user["role"] != self.user.role
+        ):
             self.user = User(
                 name=self.user.name,
                 email=self.user.email,
                 role=updated_user["role"]
             )
             self.user_changed.emit()
+
         self.cart.clear()
         self.cart_changed.emit()
         self.orders_changed.emit()
