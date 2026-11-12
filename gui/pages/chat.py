@@ -159,6 +159,9 @@ class ChatPage(Page):
         text = text.strip()
         if not text or self.busy:
             return
+        if not self.session.signed_in or not self.session.user.can_use_ai:
+            return
+
         self.suggestions.hide()
         self._history.append({"role": "user", "content": text})
         self.messages.addWidget(Bubble(text, "user"))
@@ -169,7 +172,8 @@ class ChatPage(Page):
         self._scroll_to_end()
 
         purchased = [book for book, _order in self.session.purchases]
-        messages = [{"role": "system", "content": llm.system_prompt(data.SAMPLE_BOOKS, purchased)}, *self._history]
+        role = self.session.user.role if self.session.user else "VS"
+        messages = [{"role": "system", "content": llm.system_prompt(data.SAMPLE_BOOKS, purchased, role=role)}, *self._history]
         threading.Thread(target=_stream, args=(self._bridge, self._request_id, messages), daemon=True).start()
 
     # --- internals --------------------------------------------------------

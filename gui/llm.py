@@ -26,7 +26,7 @@ class LLMError(RuntimeError):
     """A problem talking to the local model, worded for the user."""
 
 
-def system_prompt(catalog: Iterable[Book], purchased: Iterable[Book] = ()) -> str:
+def system_prompt(catalog: Iterable[Book], purchased: Iterable[Book] = (), role: str = "RC") -> str:
     lines = [
         "You are the friendly bookseller for a small online bookstore.",
         "Help the customer decide what to read next. Ask a short follow-up question when their",
@@ -40,6 +40,35 @@ def system_prompt(catalog: Iterable[Book], purchased: Iterable[Book] = ()) -> st
     bought = sorted({b.title for b in purchased})
     if bought:
         lines += ["", "The customer has already bought: " + "; ".join(bought) + "."]
+
+    if role == "RC":
+        lines += [
+            "",
+            "The customer is a registered customer.",
+            "Help with reading recommendations and purchase history.",
+            "Only discuss billing information provided in the conversation.",
+        ]
+    elif role == "VC":
+        lines += [
+            "",
+            "The customer is a VIP customer.",
+            "Provide personalized reading recommendations and purchase history.",
+            "Explain VIP benefits when relevant.",
+            "Only discuss billing information provided in the conversation.",
+        ]
+    elif role == "SU":
+        lines += [
+            "",
+            "The user is a super-user.",
+            "Help analyze available bookstore financial reports.",
+            "Provide insights and suggestions for business growth.",
+            "Do not invent financial figures.",
+        ]
+    elif role == "VS":
+        lines += [
+            "",
+            "Visitors cannot use the AI assistant.",
+        ]
     return "\n".join(lines)
 
 

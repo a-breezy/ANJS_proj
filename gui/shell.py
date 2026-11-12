@@ -26,7 +26,7 @@ USER_TABS = [
     ("orders", "Orders", "bag"),
     ("account", "Account", "user"),
 ]
-_MEMBERS_ONLY = {"cart", "orders", "account"}
+_MEMBERS_ONLY = {"ask", "cart", "orders", "account"}
 
 
 class AppShell(Page):
