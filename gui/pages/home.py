@@ -15,7 +15,7 @@ from ..session import Session
 from ..widgets import Avatar, BadgeButton, Banner, Logo, Page, SearchField, make_button, make_label, scroll_column
 from .catalog import BookGrid, GuestBookCard, HorizontalRow, RecoCard, UserBookCard
 from .orders import OrderStatusCard
-
+from ..review_dialog import BookReviewsDialog
 
 class HomePage(Page):
     sign_in_requested = Signal()
@@ -155,8 +155,12 @@ class HomePage(Page):
         else:
             card = GuestBookCard(book)
             card.sign_in_requested.connect(self.sign_in_requested)
+        card.reviews_requested.connect(self._open_reviews)
         return card
 
+    def _open_reviews(self, book: data.Book) -> None:
+        BookReviewsDialog(book, self.session, self).exec()
+        
     def _update_badge(self) -> None:
         self.cart_btn.set_count(len(self.session.cart))
 
