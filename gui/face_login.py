@@ -1,12 +1,13 @@
 """Compare a face scan with the scans saved for bookstore accounts."""
 import math
+import os
 
 from .data import User
 from .store import Store
 
 # Starting value for our class prototype. We need to test this with other people.
-MIN_SCORE = 0.60
-MIN_GAP = 0.10
+MIN_SCORE = float(os.environ.get("ANJS_FACE_MIN_SCORE", "0.60"))
+MIN_GAP = float(os.environ.get("ANJS_FACE_MIN_GAP", "0.10"))
 
 
 def similarity(a: list[float], b: list[float]) -> float:

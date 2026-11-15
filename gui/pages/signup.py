@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLineEdit, QVBoxLayout
 
 from .. import auth
 from ..store import Store
-from ..widgets import Column, IconButton, Logo, Page, make_button, make_label
+from ..widgets import IconButton, IconLabel, Logo, Page, make_button, make_label, scroll_column
 
 
 class SignUpPage(Page):
@@ -19,45 +19,56 @@ class SignUpPage(Page):
         self.store = store
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
-        column = Column(max_width=460, margins=(22, 20, 22, 18), spacing=0)
-        outer.addWidget(column)
-        root = column.col
+        scroll, root = scroll_column(max_width=460, margins=(22, 20, 22, 18), spacing=0)
+        outer.addWidget(scroll)
 
+        # Back button on its own row, then the stacked logo and wordmark
         header = QHBoxLayout()
         self.back = IconButton(icon="chevron_left", token="text", size=22, variant="round")
         self.back.setFixedSize(44, 44)
         self.back.clicked.connect(self.back_requested)
         header.addWidget(self.back)
         header.addStretch()
-        header.addWidget(Logo(40))
-        header.addSpacing(10)
-        header.addWidget(make_label("[App name]", "brand"))
-        header.addStretch()
-        header.addSpacing(44)
         root.addLayout(header)
 
+        root.addWidget(Logo(56), 0, Qt.AlignmentFlag.AlignHCenter)
+        root.addSpacing(8)
+        root.addWidget(make_label("[App name]", "brand", align=Qt.AlignmentFlag.AlignCenter))
         root.addSpacing(18)
-        root.addWidget(make_label("Create an account", "h1", wrap=True))
-        root.addSpacing(2)
-        root.addWidget(make_label("Save books, check out and track your orders", "subtitle", wrap=True))
+        root.addWidget(make_label("Create Account", "h1", align=Qt.AlignmentFlag.AlignCenter, wrap=True))
         root.addSpacing(18)
 
-        self.name = self._field(root, "Name", "Your name")
-        self.email = self._field(root, "Email", "you@example.com")
+        self.name = self._field(root, "Your name", "First and last name")
+        self.email = self._field(root, "Email", "")
         self.password = self._field(root, "Password", f"At least {auth.MIN_PASSWORD} characters", secret=True)
-        self.confirm = self._field(root, "Confirm password", "Type it again", secret=True)
+        hint = QHBoxLayout()
+        hint.setSpacing(8)
+        hint.addWidget(IconLabel("info"))
+        hint.addWidget(make_label(f"Passwords must be at least {auth.MIN_PASSWORD} characters.", "muted", wrap=True), 1)
+        root.addLayout(hint)
+        root.addSpacing(14)
+        self.confirm = self._field(root, "Re-enter password", "", secret=True)
 
         self.error = make_label("", "error", wrap=True)
         self.error.hide()
         root.addWidget(self.error)
-        root.addSpacing(8)
-        self.submit = make_button("Create account", "primary", height=56)
+        root.addSpacing(10)
+        self.submit = make_button("Create account", "primary", height=52)
         self.submit.clicked.connect(self._submit)
         root.addWidget(self.submit)
-        root.addStretch()
+        root.addSpacing(22)
+
+        # Placeholder legal text: there are no Terms or Privacy pages yet
+        terms = make_label(
+            "By creating an account, you agree to the [App name] <u>Terms of Service</u> and <u>Privacy Policy</u>.",
+            "caption",
+            wrap=True,
+        )
+        terms.setTextFormat(Qt.TextFormat.RichText)
+        root.addWidget(terms)
+        root.addSpacing(26)
 
         have_row = QHBoxLayout()
-        have_row.addStretch()
         have_row.addWidget(make_label("Already have an account?", "caption"))
         have_row.addSpacing(4)
         sign_in = make_button("Sign in", "linkbold", height=26)
@@ -65,6 +76,12 @@ class SignUpPage(Page):
         have_row.addWidget(sign_in)
         have_row.addStretch()
         root.addLayout(have_row)
+        root.addStretch()
+
+        root.addSpacing(24)
+        root.addWidget(make_label("Terms of Service      Privacy      Help", "muted", align=Qt.AlignmentFlag.AlignCenter))
+        root.addSpacing(6)
+        root.addWidget(make_label("© 2026 [App name]", "muted", align=Qt.AlignmentFlag.AlignCenter))
 
         self.name.returnPressed.connect(self.email.setFocus)
         self.email.returnPressed.connect(self.password.setFocus)

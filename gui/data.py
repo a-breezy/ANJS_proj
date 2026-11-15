@@ -1,16 +1,20 @@
-"""Sample data and models used by the GUI.
+"""Book catalogue and models used by the GUI.
 
-Everything here is PLACEHOLDER data (invented titles and authors) so the
-screens have something to show. Replace the functions in this module with
-calls to the real catalogue backend once it exists. Accounts and orders are
-not sample data any more; they live in :mod:`gui.store`.
+The catalogue is ``catalog/catalog.json``, built from Project Gutenberg and
+Open Library by ``scripts/build_catalog.py``. Without that file (or with
+``ANJS_CATALOG=sample``) the app falls back to the invented SAMPLE_BOOKS below,
+which is what the tests use. Accounts and orders live in :mod:`gui.store`.
 """
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 
-CATEGORIES = ["All", "Fiction", "Non-fiction", "Textbooks"]
+CATALOG_DIR = Path(__file__).resolve().parents[1] / "catalog"
+CATALOG_FILE = CATALOG_DIR / "catalog.json"
 
 
 @dataclass(frozen=True)
@@ -21,10 +25,29 @@ class Book:
     price: float
     category: str
     cover: int  # index into the theme's cover colours
+    description: str = ""
+    rating: float | None = None  # Open Library average out of 5; None = not rated
+    rating_count: int = 0
+    year: int | None = None  # first published
+    subjects: tuple[str, ...] = ()
+    downloads: int = 0  # Gutenberg downloads; used as "bestseller" order
+    cover_image: str = ""  # file in catalog/covers, "" = draw a placeholder cover
+
+    @property
+    def cover_path(self) -> Path | None:
+        path = CATALOG_DIR / "covers" / self.cover_image if self.cover_image else None
+        return path if path is not None and path.is_file() else None
 
     @property
     def price_text(self) -> str:
         return f"${self.price:.2f}"
+
+    @property
+    def rating_text(self) -> str:
+        if self.rating is None:
+            return "No ratings yet"
+        noun = "rating" if self.rating_count == 1 else "ratings"
+        return f"{self.rating:.1f} · {self.rating_count:,} {noun}"
 
 
 @dataclass(frozen=True)
@@ -101,38 +124,89 @@ class Order:
         return f"{d:%b} {d.day}, {d.year}"
 
 
-# Listed in bestseller order.
+# Listed in bestseller order. Descriptions are placeholders too.
 SAMPLE_BOOKS = [
-    Book(1, "The Quiet Orchard", "Mara Ellison", 14.99, "Fiction", 0),
-    Book(2, "Small Systems", "Priya Raman", 18.00, "Non-fiction", 1),
-    Book(3, "Discrete Math Basics", "Daniel Whitford", 64.00, "Textbooks", 2),
-    Book(4, "Lanterns at Low Tide", "Theo Marchetti", 16.50, "Fiction", 3),
-    Book(5, "The Slow Map", "Callum Reyes", 21.95, "Non-fiction", 0),
-    Book(6, "Paper Kingdoms", "Ines Okafor", 12.99, "Fiction", 1),
-    Book(7, "Field Notes on Focus", "June Abara", 17.50, "Non-fiction", 2),
-    Book(8, "Data Structures Lab", "Lina Cho", 58.75, "Textbooks", 3),
+    Book(1, "The Quiet Orchard", "Mara Ellison", 14.99, "Fiction", 0,
+         "After her grandmother's death, a botanist returns to the family apple orchard and finds a decades-old ledger that rewrites everything she knew about the town and the women who kept it running."),
+    Book(2, "Small Systems", "Priya Raman", 18.00, "Non-fiction", 1,
+         "A practical look at how small habits, tools and feedback loops shape the way teams and households actually work, with case studies from kitchens, clinics and start-ups."),
+    Book(3, "Discrete Math Basics", "Daniel Whitford", 64.00, "Textbooks", 2,
+         "An introductory textbook covering logic, sets, proofs, combinatorics, graphs and recurrence relations, with worked examples and exercises at the end of every chapter."),
+    Book(4, "Lanterns at Low Tide", "Theo Marchetti", 16.50, "Fiction", 3,
+         "A lighthouse keeper's son and a smuggler's daughter cross paths on a fog-bound island over one long summer, in a quiet novel about loyalty, tides and leaving home."),
+    Book(5, "The Slow Map", "Callum Reyes", 21.95, "Non-fiction", 0,
+         "A travel writer walks the old pilgrim and trade routes of three continents at three miles an hour and asks what we lose when we only ever arrive."),
+    Book(6, "Paper Kingdoms", "Ines Okafor", 12.99, "Fiction", 1,
+         "Two siblings build an imaginary kingdom out of library books and cardboard, until the games start spilling into their very real neighbourhood."),
+    Book(7, "Field Notes on Focus", "June Abara", 17.50, "Non-fiction", 2,
+         "Short, evidence-based chapters on attention, rest and deep work, with exercises for building a focus routine that survives a busy week."),
+    Book(8, "Data Structures Lab", "Lina Cho", 58.75, "Textbooks", 3,
+         "A hands-on lab manual for arrays, linked lists, stacks, queues, trees, hash tables and graphs, with step-by-step programming assignments in Python."),
 ]
 
 
+SAMPLE_CATEGORIES = ["Fiction", "Non-fiction", "Textbooks"]
+
+
+def load_catalog(path: Path = CATALOG_FILE) -> tuple[list[Book], list[str]]:
+    """Books (most downloaded first) and category names from ``catalog.json``."""
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    books = [
+        Book(
+            id=r["id"],
+            title=r["title"],
+            author=r["author"],
+            price=r["price"],
+            category=r["category"],
+            cover=r["id"] % 4,
+            description=r.get("description", ""),
+            rating=r.get("rating"),
+            rating_count=r.get("rating_count", 0),
+            year=r.get("year"),
+            subjects=tuple(r.get("subjects", ())),
+            downloads=r.get("downloads", 0),
+            cover_image=r.get("cover_image", ""),
+        )
+        for r in raw["books"]
+    ]
+    # Most downloaded first; Open Library's rating count breaks ties (and stands in
+    # when Gutendex was down during the import and every download count is 0).
+    books.sort(key=lambda b: (b.downloads, b.rating_count), reverse=True)
+    return books, raw["categories"]
+
+
+if os.environ.get("ANJS_CATALOG", "") != "sample" and CATALOG_FILE.is_file():
+    BOOKS, _categories = load_catalog()
+else:
+    BOOKS, _categories = SAMPLE_BOOKS, SAMPLE_CATEGORIES
+CATEGORIES = ["All", *_categories]
+_BY_ID = {b.id: b for b in BOOKS}
+
+
 def book_by_id(book_id: int) -> Book | None:
-    return next((b for b in SAMPLE_BOOKS if b.id == book_id), None)
+    return _BY_ID.get(book_id)
 
 
 def books_in(category: str = "All") -> list[Book]:
     if category == "All":
-        return list(SAMPLE_BOOKS)
-    return [b for b in SAMPLE_BOOKS if b.category == category]
+        return list(BOOKS)
+    return [b for b in BOOKS if b.category == category]
 
 
-def bestsellers(category: str = "All", limit: int = 4) -> list[Book]:
-    return books_in(category)[:limit]
+def bestsellers(category: str = "All", limit: int | None = None) -> list[Book]:
+    books = books_in(category)
+    return books if limit is None else books[:limit]
 
 
-def recommended() -> list[Book]:
-    by_id = {b.id: b for b in SAMPLE_BOOKS}
-    return [by_id[i] for i in (2, 1, 4, 5)]
+def recommended(count: int = 4) -> list[Book]:
+    """Best-rated books with enough ratings to trust; the first few books otherwise."""
+    rated = [b for b in BOOKS if b.rating is not None and b.rating_count >= 20]
+    rated.sort(key=lambda b: b.rating, reverse=True)
+    return (rated or BOOKS)[:count]
 
 
 def search(query: str, category: str = "All") -> list[Book]:
-    q = query.strip().lower()
-    return [b for b in books_in(category) if q in b.title.lower() or q in b.author.lower()]
+    from .search import catalog_index
+
+    hits = catalog_index().search(query)
+    return hits if category == "All" else [b for b in hits if b.category == category]

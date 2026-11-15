@@ -1,10 +1,14 @@
 """Shared face feature extraction for enrollment and login."""
-from pathlib import Path
+import os
 
-MODELS = Path(__file__).resolve().parents[1] / ".data" / "models"
-YOLO_FILE = MODELS / "yolov8n-face.pt"
-YUNET_FILE = MODELS / "face_detection_yunet_2023mar.onnx"
-SFACE_FILE = MODELS / "face_recognition_sface_2021dec.onnx"
+from .config import project_path
+
+# Paths and camera come from .env (see .env.example); these are the defaults.
+MODELS = project_path(os.environ.get("ANJS_MODELS_DIR", ".data/models"))
+YOLO_FILE = MODELS / os.environ.get("ANJS_YOLO_MODEL", "yolov8n-face.pt")
+YUNET_FILE = MODELS / os.environ.get("ANJS_YUNET_MODEL", "face_detection_yunet_2023mar.onnx")
+SFACE_FILE = MODELS / os.environ.get("ANJS_SFACE_MODEL", "face_recognition_sface_2021dec.onnx")
+CAMERA_INDEX = int(os.environ.get("ANJS_CAMERA_INDEX", "0"))
 
 
 def missing_model():

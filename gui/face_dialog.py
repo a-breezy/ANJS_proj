@@ -1,4 +1,5 @@
 """Webcam dialog for ANJS facial login."""
+import os
 import time
 from threading import Event
 
@@ -8,7 +9,7 @@ from PySide6.QtWidgets import QDialog, QLabel, QPushButton, QVBoxLayout
 
 from .auth import authenticate_face
 
-SCAN_SECONDS = 25
+SCAN_SECONDS = int(os.environ.get("ANJS_FACE_SCAN_SECONDS", "25"))
 
 
 class FaceScanWorker(QThread):
@@ -30,7 +31,7 @@ class FaceScanWorker(QThread):
             # Import the AI tools here so password login still works without them.
             import cv2
             from ultralytics import YOLO
-            from .face_camera import (YOLO_FILE, YUNET_FILE, SFACE_FILE,
+            from .face_camera import (CAMERA_INDEX, YOLO_FILE, YUNET_FILE, SFACE_FILE,
                                       get_features, missing_model)
 
             missing = missing_model()
@@ -45,7 +46,7 @@ class FaceScanWorker(QThread):
 
             if self._stop.is_set():
                 return
-            camera = cv2.VideoCapture(0)
+            camera = cv2.VideoCapture(CAMERA_INDEX)
             if not camera.isOpened():
                 self.status.emit("Camera unavailable. Check permissions or use your password.")
                 return

@@ -8,18 +8,34 @@ from ..data import Book
 from ..widgets import BookCover, make_button, make_label
 
 
-class GuestBookCard(QFrame):
+class BookTile(QFrame):
+    """A book card that opens the book's page when clicked anywhere but its buttons."""
+
+    open_requested = Signal(object)  # Book
+
+    def __init__(self, book: Book) -> None:
+        super().__init__()
+        self.book = book
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self.rect().contains(event.position().toPoint()):
+            self.open_requested.emit(self.book)
+        super().mouseReleaseEvent(event)
+
+
+class GuestBookCard(BookTile):
     """Cover, title, author, price and a locked 'Sign in to buy' button."""
 
     sign_in_requested = Signal()
 
     def __init__(self, book: Book) -> None:
-        super().__init__()
+        super().__init__(book)
         self.setProperty("card", True)
         col = QVBoxLayout(self)
         col.setContentsMargins(8, 8, 8, 10)
         col.setSpacing(3)
-        col.addWidget(BookCover(book.cover, 86))
+        col.addWidget(BookCover(book.cover, 86, image=book.cover_path))
         col.addSpacing(4)
         col.addWidget(make_label(book.title, "book", wrap=True))
         col.addWidget(make_label(book.author, "author", wrap=True))
@@ -31,13 +47,13 @@ class GuestBookCard(QFrame):
         col.addStretch()
 
 
-class UserBookCard(QFrame):
+class UserBookCard(BookTile):
     """Title, price and an 'Add to cart' button."""
 
     add_requested = Signal(object)  # Book
 
     def __init__(self, book: Book) -> None:
-        super().__init__()
+        super().__init__(book)
         self.setProperty("card", True)
         col = QVBoxLayout(self)
         col.setContentsMargins(14, 12, 14, 12)
@@ -52,16 +68,16 @@ class UserBookCard(QFrame):
         col.addStretch()
 
 
-class RecoCard(QWidget):
+class RecoCard(BookTile):
     """Square cover with title and price (horizontal 'Recommended' row)."""
 
     def __init__(self, book: Book) -> None:
-        super().__init__()
+        super().__init__(book)
         self.setFixedWidth(106)
         col = QVBoxLayout(self)
         col.setContentsMargins(0, 0, 0, 0)
         col.setSpacing(2)
-        col.addWidget(BookCover(book.cover, 112, square=True))
+        col.addWidget(BookCover(book.cover, 112, square=True, image=book.cover_path))
         col.addSpacing(4)
         title = make_label(book.title, "book", wrap=True)
         col.addWidget(title)

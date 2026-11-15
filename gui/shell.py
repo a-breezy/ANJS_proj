@@ -10,6 +10,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QStackedWidget, QVBoxLayout
 
 from .pages.account import AccountPage
+from .pages.book import BookPage
 from .pages.cart import CartPage
 from .pages.chat import ChatPage
 from .pages.home import HomePage
@@ -31,6 +32,7 @@ _MEMBERS_ONLY = {"ask", "cart", "orders", "account"}
 
 class AppShell(Page):
     sign_in_requested = Signal()
+    sign_up_requested = Signal()
     sign_out_requested = Signal()
 
     def __init__(self, session: Session) -> None:
@@ -45,7 +47,16 @@ class AppShell(Page):
         self.cart = CartPage(session)
         self.orders = OrdersPage(session)
         self.account = AccountPage(session)
-        self._pages = {"home": self.home, "ask": self.chat, "cart": self.cart, "orders": self.orders, "account": self.account}
+        self.book = BookPage(session)
+        self._pages = {
+            "home": self.home,
+            "ask": self.chat,
+            "cart": self.cart,
+            "orders": self.orders,
+            "account": self.account,
+            "book": self.book,
+        }
+        self._book_from = "home"  # tab to return to from the book page
         for page in self._pages.values():
             self.stack.addWidget(page)
         col.addWidget(self.stack, 1)
@@ -54,8 +65,12 @@ class AppShell(Page):
         col.addWidget(self.nav)
 
         self.home.sign_in_requested.connect(self.sign_in_requested)
+        self.home.sign_up_requested.connect(self.sign_up_requested)
         self.home.cart_requested.connect(lambda: self.show_tab("cart"))
         self.home.orders_requested.connect(lambda: self.show_tab("orders"))
+        self.home.book_requested.connect(self.show_book)
+        self.book.back_requested.connect(lambda: self.show_tab(self._book_from))
+        self.book.sign_in_requested.connect(self.sign_in_requested)
         self.cart.checked_out.connect(lambda _order: self.show_orders("tracking"))
         self.account.sign_out_requested.connect(self.sign_out_requested)
         session.user_changed.connect(self._sync_tabs)
@@ -79,10 +94,22 @@ class AppShell(Page):
             self.nav.set_current("search")
             self.home.focus_search()
             return
+        if key == "book":
+            # Not a nav tab: keep the tab the book was opened from highlighted
+            self.stack.setCurrentWidget(self.book)
+            self.nav.set_current(self._book_from)
+            return
         if key == "home":
             self.home.search.clearFocus()
         self.stack.setCurrentWidget(self._pages[key])
         self.nav.set_current(key)
+
+    def show_book(self, book) -> None:
+        current = self.current_tab()
+        if current != "book":
+            self._book_from = "search" if current == "home" and self.home.search.text().strip() else current
+        self.book.show_book(book)
+        self.show_tab("book")
 
     def show_orders(self, tab: str) -> None:
         self.orders.show_tab(tab)

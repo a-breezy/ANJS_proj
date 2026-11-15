@@ -1,8 +1,10 @@
 """Reusable widgets shared by the screens."""
 from __future__ import annotations
 
+import math
+
 from PySide6.QtCore import QEasingCurve, QPointF, QRectF, QSize, Qt, QVariantAnimation, Signal
-from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractButton,
     QButtonGroup,
@@ -32,6 +34,62 @@ def make_label(text: str = "", role: str | None = None, align=None, wrap: bool =
         label.setAlignment(align)
     label.setWordWrap(wrap)
     return label
+
+
+class IconLabel(QLabel):
+    """A single themed icon shown as a label (e.g. the info mark beside a hint)."""
+
+    def __init__(self, icon: str, token: str = "muted", size: int = 18, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._icon, self._token, self._size = icon, token, size
+        self.setFixedSize(size, size)
+        theme.changed.connect(self._repaint)
+        self._repaint()
+
+    def _repaint(self) -> None:
+        self.setPixmap(icons.pixmap(self._icon, c(self._token), self._size, stroke=1.8))
+
+
+class StarRating(QWidget):
+    """Five stars filled to a rating out of 5 (fractions fill part of a star)."""
+
+    def __init__(self, star: int = 18, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._rating = 0.0
+        self._star = star
+        self._gap = max(2, star // 6)
+        self.setFixedSize(5 * star + 4 * self._gap, star)
+        theme.changed.connect(self.update)
+
+    def set_rating(self, rating: float | None) -> None:
+        self._rating = max(0.0, min(5.0, rating or 0.0))
+        self.update()
+
+    def _star_path(self, x: float) -> QPainterPath:
+        r, cx, cy = self._star / 2, x + self._star / 2, self._star / 2 + 0.5
+        path = QPainterPath()
+        for i in range(10):
+            radius = r if i % 2 == 0 else r * 0.45
+            angle = math.radians(-90 + i * 36)
+            point = QPointF(cx + radius * math.cos(angle), cy + radius * math.sin(angle))
+            path.moveTo(point) if i == 0 else path.lineTo(point)
+        path.closeSubpath()
+        return path
+
+    def paintEvent(self, _event) -> None:
+        p = QPainter(self)
+        p.setRenderHint(AA)
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(5):
+            x = i * (self._star + self._gap)
+            path = self._star_path(x)
+            p.fillPath(path, c("field_border"))
+            fill = min(1.0, max(0.0, self._rating - i))
+            if fill:
+                p.save()
+                p.setClipRect(QRectF(x, 0, self._star * fill, self._star + 1))
+                p.fillPath(path, c("highlight"))
+                p.restore()
 
 
 class Page(QWidget):
@@ -191,17 +249,37 @@ class Avatar(QWidget):
         p.drawText(r, Qt.AlignmentFlag.AlignCenter, self._initial)
 
 
-class BookCover(QWidget):
-    """Placeholder cover art: coloured block, corner circle and two text bars."""
+_cover_images: dict[str, QPixmap] = {}
 
-    def __init__(self, cover: int, height: int, square: bool = False, parent: QWidget | None = None) -> None:
+
+def _cover_image(path) -> QPixmap | None:
+    if path is None:
+        return None
+    key = str(path)
+    if key not in _cover_images:
+        _cover_images[key] = QPixmap(key)
+    pixmap = _cover_images[key]
+    return None if pixmap.isNull() else pixmap
+
+
+class BookCover(QWidget):
+    """A book's cover image, cropped to fill; or placeholder art when it has none
+    (coloured block, corner circle and two text bars)."""
+
+    def __init__(self, cover: int, height: int, square: bool = False, image=None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._cover = cover
         self._square = square
+        self._image = _cover_image(image)
         self.setFixedHeight(height)
         self.setMinimumWidth(0)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         theme.changed.connect(self.update)
+
+    def set_cover(self, cover: int, image=None) -> None:
+        self._cover = cover
+        self._image = _cover_image(image)
+        self.update()
 
     def paintEvent(self, _event) -> None:
         covers = theme.palette.covers
@@ -214,6 +292,13 @@ class BookCover(QWidget):
         clip.addRoundedRect(QRectF(0, 0, w, h), radius, radius)
         p.setClipPath(clip)
         p.fillPath(clip, QColor(bg))
+
+        if self._image is not None:
+            p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+            scaled = self._image.size().scaled(w, h, Qt.AspectRatioMode.KeepAspectRatioByExpanding)
+            target = QRectF((w - scaled.width()) / 2, 0, scaled.width(), scaled.height())
+            p.drawPixmap(target, self._image, QRectF(self._image.rect()))
+            return
 
         d = min(w, h) * 0.5
         p.setPen(Qt.PenStyle.NoPen)

@@ -12,11 +12,14 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("ANJS_CATALOG", "sample")  # tests use the 8 sample books
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from PySide6.QtCore import QPoint, Qt  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from PySide6.QtWidgets import QApplication, QPushButton  # noqa: E402
 
@@ -82,8 +85,9 @@ class GuiSmokeTests(unittest.TestCase):
     def test_landing_page_shows_no_personal_info(self) -> None:
         self.assertIs(self.win.stack.currentWidget(), self.win.shell)
         self.assertIsNone(self.win.session.user)
-        self.assertEqual(self.home.grid.count(), 4)
-        self.assertEqual(len(self.home.grid.findChildren(GuestBookCard)), 4)
+        self.assertEqual(self.home.grid.count(), 8)
+        self.assertEqual(len(self.home.grid.findChildren(GuestBookCard)), 8)
+        self.assertTrue(self.home.more.isHidden())
         self.assertEqual(self.home.grid.findChildren(UserBookCard), [])
         self.assertTrue(self.home.user_header.isHidden())
         self.assertTrue(self.home.order_card.isHidden())
@@ -99,7 +103,19 @@ class GuiSmokeTests(unittest.TestCase):
         _chip(self.win, "Textbooks").click()
         self.assertEqual(self.home.grid.count(), 2)
         _chip(self.win, "All").click()
-        self.assertEqual(self.home.grid.count(), 4)
+        self.assertEqual(self.home.grid.count(), 8)
+
+    def test_show_more_pages_through_long_lists(self) -> None:
+        from gui.pages import home as home_module
+
+        with mock.patch.object(home_module, "PAGE_SIZE", 3):
+            self.home._set_category("All")
+            self.assertEqual(self.home.grid.count(), 3)
+            self.assertFalse(self.home.more.isHidden())
+            self.home.more.click()
+            self.home.more.click()
+            self.assertEqual(self.home.grid.count(), 8)
+            self.assertTrue(self.home.more.isHidden())
 
     def test_search_results_and_empty_state(self) -> None:
         self.home.search.setText("orchard")
@@ -107,6 +123,39 @@ class GuiSmokeTests(unittest.TestCase):
         self.home.search.setText("zzzz")
         self.assertEqual(self.home.grid.count(), 0)
         self.assertFalse(self.home.empty.isHidden())
+
+    def test_create_account_button_opens_sign_up_for_visitors_only(self) -> None:
+        create = next(b for b in self.home.guest_header.findChildren(QPushButton) if b.text().strip() == "Create account")
+        create.click()
+        self.assertIs(self.win.stack.currentWidget(), self.win.signup)
+        self.sign_up()
+        self.assertTrue(self.home.guest_header.isHidden())
+
+    # --- book page --------------------------------------------------------
+    def test_clicking_a_card_opens_its_book_page(self) -> None:
+        shell = self.win.shell
+        card = self.home.grid.findChildren(GuestBookCard)[0]
+        QTest.mouseClick(card, Qt.MouseButton.LeftButton, pos=QPoint(4, 4))
+        self.assertIs(shell.stack.currentWidget(), shell.book)
+        self.assertEqual(shell.book.title.text(), card.book.title)
+        self.assertEqual(shell.book.description.text(), card.book.description)
+        self.assertFalse(shell.book.sign_in_btn.isHidden())
+        self.assertTrue(shell.book.add_btn.isHidden())
+        shell.book.back.click()
+        self.assertIs(shell.stack.currentWidget(), self.home)
+
+    def test_book_page_adds_to_cart_when_signed_in(self) -> None:
+        self.sign_up()
+        shell = self.win.shell
+        shell.show_book(SAMPLE_BOOKS[2])
+        self.assertTrue(shell.book.sign_in_btn.isHidden())
+        shell.book.add_btn.click()
+        self.assertEqual(self.win.session.cart, [SAMPLE_BOOKS[2]])
+
+    def test_card_button_does_not_open_book_page(self) -> None:
+        self.sign_up()
+        self.home.grid.findChildren(UserBookCard)[0].findChild(QPushButton).click()
+        self.assertIs(self.win.shell.stack.currentWidget(), self.home)
 
     # --- responsive layout ------------------------------------------------
     def test_breakpoints(self) -> None:

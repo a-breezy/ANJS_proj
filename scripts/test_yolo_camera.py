@@ -1,11 +1,13 @@
 
 from pathlib import Path
 from urllib.request import urlretrieve
+import sys
 
 import cv2
 from ultralytics import YOLO
 
-MODEL_FILE = Path(__file__).resolve().parents[1] / ".data" / "models" / "yolov8n-face.pt"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from gui.face_camera import CAMERA_INDEX, YOLO_FILE as MODEL_FILE
 
 MODEL_URL = (
     "https://github.com/akanametov/yolo-face/releases/download/1.0.0/"
@@ -20,7 +22,7 @@ def main():
         urlretrieve(MODEL_URL, MODEL_FILE)
 
     model = YOLO(str(MODEL_FILE))
-    camera = cv2.VideoCapture(0)
+    camera = cv2.VideoCapture(CAMERA_INDEX)
 
     if not camera.isOpened():
         print("Could not open the webcam. Check camera permission and try again.")

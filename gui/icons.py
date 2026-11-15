@@ -90,6 +90,12 @@ def _check(p: QPainter) -> None:
     _polyline(p, (5, 12.5), (10, 17.5), (19, 7))
 
 
+def _info(p: QPainter) -> None:
+    p.drawEllipse(QPointF(12, 12), 9, 9)
+    p.drawLine(QPointF(12, 11), QPointF(12, 16.5))
+    p.drawPoint(QPointF(12, 7.8))
+
+
 _ICONS = {
     "home": _home,
     "search": _search,
@@ -101,6 +107,7 @@ _ICONS = {
     "chevron_left": _chevron_left,
     "bubble": _bubble,
     "check": _check,
+    "info": _info,
 }
 
 
