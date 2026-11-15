@@ -12,6 +12,7 @@ class GuestBookCard(QFrame):
     """Cover, title, author, price and a locked 'Sign in to buy' button."""
 
     sign_in_requested = Signal()
+    reviews_requested = Signal(object)  # Book
 
     def __init__(self, book: Book) -> None:
         super().__init__()
@@ -28,6 +29,9 @@ class GuestBookCard(QFrame):
         buy = make_button("Sign in to buy", "outline", height=38, icon="lock", token="outline")
         buy.clicked.connect(self.sign_in_requested)
         col.addWidget(buy)
+        rev = make_button("Reviews & Ratings", "small", height=32)
+        rev.clicked.connect(lambda: self.reviews_requested.emit(book))
+        col.addWidget(rev)
         col.addStretch()
 
 
@@ -35,6 +39,7 @@ class UserBookCard(QFrame):
     """Title, price and an 'Add to cart' button."""
 
     add_requested = Signal(object)  # Book
+    reviews_requested = Signal(object)  # Book
 
     def __init__(self, book: Book) -> None:
         super().__init__()
@@ -49,6 +54,9 @@ class UserBookCard(QFrame):
         add = make_button("Add to cart", "primary", height=42)
         add.clicked.connect(lambda: self.add_requested.emit(book))
         col.addWidget(add)
+        rev = make_button("Reviews & Ratings", "small", height=32)
+        rev.clicked.connect(lambda: self.reviews_requested.emit(book))
+        col.addWidget(rev)
         col.addStretch()
 
 
