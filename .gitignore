@@ -5,3 +5,4 @@ venv/
 .data/
 .env
 todo.md
+.DS_Store
