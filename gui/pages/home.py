@@ -104,10 +104,6 @@ class HomePage(Page):
         reco.setSpacing(12)
         reco.addWidget(make_label("Recommended for you", "h2"))
         self.reco_row = HorizontalRow(190)
-        reco_cards = [RecoCard(b) for b in data.recommended()]
-        for card in reco_cards:
-            card.open_requested.connect(self.book_requested)
-        self.reco_row.set_widgets(reco_cards)
         reco.addWidget(self.reco_row)
         col.addWidget(self.reco_box)
 
@@ -143,6 +139,7 @@ class HomePage(Page):
         session.user_changed.connect(self.refresh)
         session.cart_changed.connect(self._update_badge)
         session.orders_changed.connect(self._update_order)
+        session.orders_changed.connect(self._rebuild_recommendations)
         self.refresh()
 
     def resizeEvent(self, event) -> None:
@@ -168,11 +165,21 @@ class HomePage(Page):
         if user is not None:
             self.hello.setText(f"Hi, {user.name.split()[0]}")
             self.avatar.set_initial(user.initial)
+            self._rebuild_recommendations()
         self._update_badge()
         self._update_order()
         self._refresh_books()
 
     # --- internals --------------------------------------------------------
+    def _rebuild_recommendations(self) -> None:
+        if not self.session.signed_in:
+            return
+        bought = {book.id for book, _order in self.session.purchases}
+        cards = [RecoCard(b) for b in data.recommended(count=3, exclude=bought)]
+        for card in cards:
+            card.open_requested.connect(self.book_requested)
+        self.reco_row.set_widgets(cards)
+
     def _make_card(self, book: data.Book):
         if self.session.signed_in:
             card = UserBookCard(book)
