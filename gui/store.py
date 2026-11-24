@@ -107,13 +107,13 @@ class Store:
         record.pop("face_templates", None)
         self._save()
 
-    """Finds accounts that have enrolled faces"""
-    def enrolled_face_accounts(self) -> list[dict]: 
+    def enrolled_face_accounts(self) -> list[dict]:
         """Find accounts that have face scans saved."""
         return [
             {
                 "name": record["name"],
                 "email": record["email"],
+                "role": record.get("role", "RC"),
                 "face_templates": record["face_templates"],
             }
             for record in self._data["users"].values()
