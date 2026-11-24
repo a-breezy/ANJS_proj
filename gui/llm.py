@@ -16,14 +16,40 @@ import urllib.error
 import urllib.request
 from collections.abc import Iterable, Iterator
 
+from . import data
 from .data import Book, Order
 
 HOST = os.environ.get("ANJS_LLM_HOST", "http://localhost:11434").rstrip("/")
 MODEL = os.environ.get("ANJS_LLM_MODEL", "llama3.2:3b")
+MAX_PROMPT_BOOKS = 40  # catalog lines per prompt, so it doesn't grow with the catalog
+MAX_HISTORY_MESSAGES = 12  # chat messages sent along with the system prompt
 
 
 class LLMError(RuntimeError):
     """A problem talking to the local model, worded for the user."""
+
+
+def _prompt_books(catalog: Iterable[Book], purchased: list[Book], query: str) -> list[Book]:
+    """Up to MAX_PROMPT_BOOKS: matches for the query, then purchases, then bestsellers."""
+    books = list(catalog)
+    by_id = {b.id: b for b in books}
+    chosen: dict[int, Book] = {}
+
+    def take(candidates: Iterable[Book]) -> None:
+        for book in candidates:
+            if len(chosen) >= MAX_PROMPT_BOOKS:
+                return
+            if book.id in by_id:
+                chosen.setdefault(book.id, by_id[book.id])
+
+    if query.strip():
+        try:
+            take(data.search(query))
+        except Exception:  # noqa: BLE001 - a search hiccup must not break chat
+            pass
+    take(purchased)
+    take(sorted(books, key=lambda b: b.downloads, reverse=True))
+    return list(chosen.values())
 
 
 def system_prompt(
@@ -32,7 +58,10 @@ def system_prompt(
     role: str = "RC",
     orders: Iterable[Order] = (),
     financial_summary: dict | None = None,
+    query: str = "",
 ) -> str:
+    """Build the system prompt. ``query`` (the latest user message) picks which catalog books to list."""
+    purchased = list(purchased)
     lines = [
         "You are the friendly bookseller for a small online bookstore.",
         "Help the customer decide what to read next. Ask a short follow-up question when their",
@@ -42,7 +71,7 @@ def system_prompt(
         "",
         "Catalog:",
     ]
-    lines += [f"- {b.title} by {b.author} ({b.category}, {b.price_text})" for b in catalog]
+    lines += [f"- {b.title} by {b.author} ({b.category}, {b.price_text})" for b in _prompt_books(catalog, purchased, query)]
     bought = sorted({b.title for b in purchased})
     if bought:
         lines += ["", "The customer has already bought: " + "; ".join(bought) + "."]
