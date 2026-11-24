@@ -85,6 +85,11 @@ class AppShell(Page):
         return next(k for k, page in self._pages.items() if page is self.stack.currentWidget())
 
     def show_tab(self, key: str) -> None:
+        if key == "ask" and not self.session.signed_in:
+            self.nav.set_current(self.current_tab())
+            self.sign_up_requested.emit()
+            return
+
         if key == "signin" or (key in _MEMBERS_ONLY and not self.session.signed_in):
             self.nav.set_current(self.current_tab())
             self.sign_in_requested.emit()
