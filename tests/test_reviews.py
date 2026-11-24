@@ -116,5 +116,43 @@ class WarningTests(UserReviewCase):
         self.assertEqual(user["role"], "SU")
 
 
+class PromotionTests(UserReviewCase):
+    def order(self, n=1):
+        for _ in range(n):
+            self.store.add_order("ann@example.com", [REAL_BOOKS[0].id])
+
+    def role(self):
+        return self.store.get_user("ann@example.com")["role"]
+
+    def demote(self):
+        self.store.set_role("ann@example.com", "VC")
+        for _ in range(3):
+            self.post("spam scam trash idiot")
+        self.assertEqual(self.role(), "RC")
+
+    def test_demoted_vc_not_repromoted_by_next_order(self):
+        user = self.store.get_user("ann@example.com")
+        user["purchase_count"], user["total_spent"] = 5, 250.0
+        self.store._save()
+        self.demote()
+        self.order()
+        self.assertEqual(self.role(), "RC")
+        self.order(3)  # 4 purchases since demotion (> 3)
+        self.assertEqual(self.role(), "VC")
+
+    def test_never_demoted_user_promotes_at_fourth_purchase(self):
+        self.order(3)
+        self.assertEqual(self.role(), "RC")
+        self.order()
+        self.assertEqual(self.role(), "VC")
+
+    def test_never_demoted_user_promotes_over_200_dollars(self):
+        user = self.store.get_user("ann@example.com")
+        user["total_spent"] = 200.0
+        self.store._save()
+        self.order()  # total_spent now above 200 only if the book costs > 0
+        self.assertEqual(self.role(), "VC")
+
+
 if __name__ == "__main__":
     unittest.main()

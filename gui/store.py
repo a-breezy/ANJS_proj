@@ -172,9 +172,12 @@ class Store:
         if user is not None:
             user["purchase_count"] = user.get("purchase_count", 0) + 1
             user["total_spent"] = round(user.get("total_spent", 0.0) + final_total, 2)
-            if user["role"] == "RC" and (
-                user["purchase_count"] > 3 or user["total_spent"] > 200
-            ):
+            # A demoted VC must earn VIP status again: only count activity
+            # since the demotion (baseline is 0 for never-demoted users).
+            baseline = user.get("promotion_baseline", {})
+            purchases_since = user["purchase_count"] - baseline.get("purchases", 0)
+            spent_since = user["total_spent"] - baseline.get("spent", 0.0)
+            if user["role"] == "RC" and (purchases_since > 3 or spent_since > 200):
                 user["role"] = "VC"
         self._save()
         return order

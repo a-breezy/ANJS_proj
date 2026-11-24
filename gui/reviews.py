@@ -136,6 +136,11 @@ class ReviewService:
                     if user.get("role") == "VC":
                         user["role"] = "RC"
                         user["warnings"] = 0
+                        # Stop the next order from instantly re-promoting them.
+                        user["promotion_baseline"] = {
+                            "purchases": user.get("purchase_count", 0),
+                            "spent": user.get("total_spent", 0.0),
+                        }
                         demoted = True
                         msg += (
                             " You reached 3 warnings and were demoted from VIP (VC) "
