@@ -40,9 +40,9 @@ def _emit(signal, *args) -> None:
         pass
 
 
-def _stream(bridge: _Bridge, request_id: int, messages: list[dict]) -> None:
+def _stream(bridge: _Bridge, request_id: int, messages: list[dict], prefs: dict | None = None) -> None:
     try:
-        for piece in llm.stream_chat(messages):
+        for piece in llm.stream_chat(messages, prefs=prefs):
             _emit(bridge.chunk, request_id, piece)
     except llm.LLMError as exc:
         _emit(bridge.failed, request_id, str(exc))
@@ -182,6 +182,7 @@ class ChatPage(Page):
         self._scroll_to_end()
 
         purchased = [book for book, _order in self.session.purchases]
+        prefs = self._prefs()
         role = self.session.user.role if self.session.user else "VS"
         messages = [
             {
@@ -192,6 +193,7 @@ class ChatPage(Page):
                     role=role,
                     orders=self.session.orders,
                     query=text,
+                    prefs=prefs,
                     financial_summary=(
                         self.session.store.financial_summary()
                         if role == "SU"
@@ -201,9 +203,18 @@ class ChatPage(Page):
             },
             *self._history[-llm.MAX_HISTORY_MESSAGES:],
         ]
-        threading.Thread(target=_stream, args=(self._bridge, self._request_id, messages), daemon=True).start()
+        threading.Thread(target=_stream, args=(self._bridge, self._request_id, messages, prefs), daemon=True).start()
 
     # --- internals --------------------------------------------------------
+    def _prefs(self) -> dict:
+        """The signed-in user's AI preferences, read fresh so changes apply to the next message."""
+        user = self.session.user
+        try:
+            raw = self.session.store.get_profile(user.email)["llm_prefs"] if user else {}
+        except ValueError:
+            raw = {}
+        return llm.normalize_prefs(raw)
+
     def _reply_locally(self, text: str) -> None:
         """Show an answer the app wrote itself (no model call) and keep it in the conversation."""
         self.messages.addWidget(Bubble(text, "bot"))
