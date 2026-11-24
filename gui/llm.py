@@ -25,6 +25,34 @@ MODEL = os.environ.get("ANJS_LLM_MODEL", "llama3.2:3b")
 class LLMError(RuntimeError):
     """A problem talking to the local model, worded for the user."""
 
+def financial_answer(question, role, financial_summary=None):
+    question = question.lower().strip().rstrip("?.!")
+
+    if question not in (
+        "what was total revenue",
+        "what is total revenue",
+        "what is the total revenue",
+        "what was the total revenue",
+        "what is the bookstore's total revenue",
+        "what are the total sales",
+        "total revenue",
+        "total sales",
+    ):
+        return None
+
+    if role != "SU":
+        return (
+            "Bookstore financial information is restricted "
+            "to super-users."
+        )
+
+    if financial_summary is None:
+        return "Financial information is currently unavailable."
+
+    return (
+        f"The bookstore's total revenue after discounts is "
+        f"${financial_summary['total_sales']:,.2f}."
+    )
 
 def system_prompt(
     catalog: Iterable[Book],
@@ -43,7 +71,11 @@ def system_prompt(
         "Catalog:",
     ]
     lines += [f"- {b.title} by {b.author} ({b.category}, {b.price_text})" for b in catalog]
-    bought = sorted({b.title for b in purchased})
+    bought = (
+        sorted({b.title for b in purchased})
+        if role in ("RC", "VC")
+        else []
+    )
     if bought:
         lines += ["", "The customer has already bought: " + "; ".join(bought) + "."]
 
@@ -77,8 +109,14 @@ def system_prompt(
     elif role == "VS":
         lines += [
             "",
-            "Visitors cannot use the AI assistant.",
+            "The user is a visitor.",
+            "Provide basic book recommendations using the public catalog only.",
+            "Do not recommend books outside the public catalog.",
+            "Answer questions about available books, authors, categories, and prices.",
+            "Do not provide private customer information or bookstore financial reports.",
+            "Suggest creating an account for personalized recommendations and purchase history.",
         ]
+
 
     if role in ("RC", "VC"):
         order_list = list(orders)
@@ -111,18 +149,26 @@ def system_prompt(
                 f"Discount: ${order.discount_amount:.2f}, "
                 f"Status: {order.status}"
             )
+    if role != "SU":
+        lines += [
+            "",
+            "Bookstore-wide financial information is restricted to super-users.",
+            "Politely refuse requests for bookstore revenue, total sales,",
+            "financial reports, or other customers' private information.",
+            "Do not estimate or invent restricted financial figures.",
+        ]
     if role == "SU" and financial_summary is not None:
         lines += [
             "",
             "Bookstore financial report:",
-            f"Total orders: {financial_summary['total_orders']}",
-            f"Total sales: ${financial_summary['total_sales']:.2f}",
-            f"Total discounts: ${financial_summary['total_discounts']:.2f}",
-            f"Books sold: {financial_summary['books_sold']}",
-            "Use these recorded order figures for financial analysis.",
-            "Do not confuse sales with profit.",
+            json.dumps(financial_summary, separators=(",", ":")),
+            "Total sales represents revenue after discounts.",
+            "Use the exact recorded financial figures.",
+            "Do not invent or recalculate financial figures.",
+            "Do not confuse revenue with profit.",
             "Suggest business growth strategies based on available data.",
         ]
+
     return "\n".join(lines)
 
 

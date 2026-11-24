@@ -110,24 +110,17 @@ class Store:
         return list(self._data["orders"].get(email.strip().lower(), []))
 
     def financial_summary(self) -> dict:
+        from .reports import financial_report
+
         orders = [
             order
             for customer_orders in self._data["orders"].values()
             for order in customer_orders
         ]
 
-        return {
-            "total_orders": len(orders),
-            "total_sales": round(
-                sum(o.get("total", 0.0) for o in orders), 2
-            ),
-            "total_discounts": round(
-                sum(o.get("discount_amount", 0.0) for o in orders), 2
-            ),
-            "books_sold": sum(
-                len(o.get("book_ids", [])) for o in orders
-            ),
-        }
+        users = list(self._data["users"].values())
+
+        return financial_report(orders, users)
 
     def add_order(self, email: str, book_ids: list[int]) -> dict:
         order_total = 0.0
@@ -135,7 +128,6 @@ class Store:
             book = book_by_id(book_id)
             if book is not None:
                 order_total += book.price
-
 
         user = self.get_user(email)
         discount_rate = 0.10 if user and user["role"] == "VC" else 0.0

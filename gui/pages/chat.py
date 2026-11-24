@@ -159,8 +159,7 @@ class ChatPage(Page):
         text = text.strip()
         if not text or self.busy:
             return
-        if not self.session.signed_in or not self.session.user.can_use_ai:
-            return
+
 
         self.suggestions.hide()
         self._history.append({"role": "user", "content": text})
@@ -171,8 +170,24 @@ class ChatPage(Page):
         self._set_busy(True)
         self._scroll_to_end()
 
-        purchased = [book for book, _order in self.session.purchases]
         role = self.session.user.role if self.session.user else "VS"
+        report = (
+            self.session.store.financial_summary()
+            if role == "SU"
+            else None
+        )
+
+        answer = llm.financial_answer(text, role, report)
+
+        if answer is not None:
+            self._on_chunk(self._request_id, answer)
+            self._on_done(self._request_id)
+            return
+        purchased = (
+            [book for book, _order in self.session.purchases]
+            if role in ("RC", "VC")
+            else []
+        )
         messages = [
             {
                 "role": "system",
@@ -180,12 +195,8 @@ class ChatPage(Page):
                     data.BOOKS,
                     purchased,
                     role=role,
-                    orders=self.session.orders,
-                    financial_summary=(
-                        self.session.store.financial_summary()
-                        if role == "SU"
-                        else None
-                    ),
+                    orders=self.session.orders if role in ("RC", "VC") else (),
+                    financial_summary=report,
                 ),
             },
             *self._history,
