@@ -44,7 +44,7 @@ class LoginPage(Page):
         header.addStretch()
         header.addWidget(Logo(40))
         header.addSpacing(10)
-        header.addWidget(make_label("[App name]", "brand"))
+        header.addWidget(make_label("Sonder", "brand"))
         header.addStretch()
         header.addSpacing(44)
         root.addLayout(header)

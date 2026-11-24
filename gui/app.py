@@ -21,7 +21,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self, store: Store | None = None) -> None:
         super().__init__()
-        self.setWindowTitle("Digital Bookstore")
+        self.setWindowTitle("Sonder")
         self.resize(1100, 800)
         self.setMinimumSize(370, 640)
 
@@ -86,12 +86,12 @@ class MainWindow(QMainWindow):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Digital Bookstore GUI")
+    parser = argparse.ArgumentParser(description="Sonder GUI")
     parser.add_argument("--theme", choices=sorted(PALETTES), default="dark", help="starting colour theme")
     args, qt_args = parser.parse_known_args(argv if argv is not None else sys.argv[1:])
 
     app = QApplication([sys.argv[0], *qt_args])
-    app.setApplicationName("Digital Bookstore")
+    app.setApplicationName("Sonder")
     font = QFont()
     font.setFamilies(FONT_FAMILIES)
     font.setPixelSize(14)
