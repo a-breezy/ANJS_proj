@@ -173,7 +173,23 @@ class ChatPage(Page):
 
         purchased = [book for book, _order in self.session.purchases]
         role = self.session.user.role if self.session.user else "VS"
-        messages = [{"role": "system", "content": llm.system_prompt(data.BOOKS, purchased, role=role)}, *self._history]
+        messages = [
+            {
+                "role": "system",
+                "content": llm.system_prompt(
+                    data.BOOKS,
+                    purchased,
+                    role=role,
+                    orders=self.session.orders,
+                    financial_summary=(
+                        self.session.store.financial_summary()
+                        if role == "SU"
+                        else None
+                    ),
+                ),
+            },
+            *self._history,
+        ]
         threading.Thread(target=_stream, args=(self._bridge, self._request_id, messages), daemon=True).start()
 
     # --- internals --------------------------------------------------------

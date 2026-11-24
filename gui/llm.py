@@ -16,7 +16,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Iterable, Iterator
 
-from .data import Book
+from .data import Book, Order
 
 HOST = os.environ.get("ANJS_LLM_HOST", "http://localhost:11434").rstrip("/")
 MODEL = os.environ.get("ANJS_LLM_MODEL", "llama3.2:3b")
@@ -26,7 +26,13 @@ class LLMError(RuntimeError):
     """A problem talking to the local model, worded for the user."""
 
 
-def system_prompt(catalog: Iterable[Book], purchased: Iterable[Book] = (), role: str = "RC") -> str:
+def system_prompt(
+    catalog: Iterable[Book],
+    purchased: Iterable[Book] = (),
+    role: str = "RC",
+    orders: Iterable[Order] = (),
+    financial_summary: dict | None = None,
+) -> str:
     lines = [
         "You are the friendly bookseller for a small online bookstore.",
         "Help the customer decide what to read next. Ask a short follow-up question when their",
@@ -54,6 +60,10 @@ def system_prompt(catalog: Iterable[Book], purchased: Iterable[Book] = (), role:
             "The customer is a VIP customer.",
             "Provide personalized reading recommendations and purchase history.",
             "Explain VIP benefits when relevant.",
+            "Explain the VIP customer's 10% purchase discount.",
+"Recommend books based on previous purchases.",
+"Help the customer understand their accumulated savings.",
+"Suggest new books that complement their reading history.",
             "Only discuss billing information provided in the conversation.",
         ]
     elif role == "SU":
@@ -68,6 +78,50 @@ def system_prompt(catalog: Iterable[Book], purchased: Iterable[Book] = (), role:
         lines += [
             "",
             "Visitors cannot use the AI assistant.",
+        ]
+
+    if role in ("RC", "VC"):
+        order_list = list(orders)
+        total_spent = sum(order.total for order in order_list)
+        total_saved = sum(order.discount_amount for order in order_list)
+
+        lines += [
+            "",
+            "Customer billing information:",
+            f"Total orders: {len(order_list)}",
+            f"Original total before discounts: ${total_spent + total_saved:.2f}",
+            f"Total spent after discounts: ${total_spent:.2f}",
+            "The total spent already includes all applied discounts.",
+            "Do not subtract discounts from the total spent again.",
+            f"Total discounts: ${total_saved:.2f}",
+            "Only use the customer's provided billing data.",
+            "Do not invent billing information.",
+            "Use the exact billing totals provided above.",
+            "Do not recalculate or invent additional savings.",
+            "VIP discounts are calculated from the original price before discounts.",
+            "Never assume future purchases or future savings.",
+            "Use only catalog prices when recommending available books.",
+        ]
+
+        for order in order_list:
+            lines.append(
+                f"Order #{order.number}: "
+                f"Date: {order.placed}, "
+                f"Total: ${order.total:.2f}, "
+                f"Discount: ${order.discount_amount:.2f}, "
+                f"Status: {order.status}"
+            )
+    if role == "SU" and financial_summary is not None:
+        lines += [
+            "",
+            "Bookstore financial report:",
+            f"Total orders: {financial_summary['total_orders']}",
+            f"Total sales: ${financial_summary['total_sales']:.2f}",
+            f"Total discounts: ${financial_summary['total_discounts']:.2f}",
+            f"Books sold: {financial_summary['books_sold']}",
+            "Use these recorded order figures for financial analysis.",
+            "Do not confuse sales with profit.",
+            "Suggest business growth strategies based on available data.",
         ]
     return "\n".join(lines)
 
