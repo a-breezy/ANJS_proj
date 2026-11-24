@@ -27,7 +27,7 @@ USER_TABS = [
     ("orders", "Orders", "bag"),
     ("account", "Account", "user"),
 ]
-_MEMBERS_ONLY = {"ask", "cart", "orders", "account"}
+_MEMBERS_ONLY = {"cart", "orders", "account"}
 
 
 class AppShell(Page):
@@ -73,6 +73,7 @@ class AppShell(Page):
         self.book.sign_in_requested.connect(self.sign_in_requested)
         self.cart.checked_out.connect(lambda _order: self.show_orders("tracking"))
         self.account.sign_out_requested.connect(self.sign_out_requested)
+        session.user_changed.connect(self.chat.reset)
         session.user_changed.connect(self._sync_tabs)
         self._sync_tabs()
 
@@ -85,10 +86,7 @@ class AppShell(Page):
         return next(k for k, page in self._pages.items() if page is self.stack.currentWidget())
 
     def show_tab(self, key: str) -> None:
-        if key == "ask" and not self.session.signed_in:
-            self.nav.set_current(self.current_tab())
-            self.sign_up_requested.emit()
-            return
+
 
         if key == "signin" or (key in _MEMBERS_ONLY and not self.session.signed_in):
             self.nav.set_current(self.current_tab())
