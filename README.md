@@ -1,6 +1,6 @@
-# ANJS Bookstore
+# Sonder
 
-CCNY Fall 2026 (CSC 322, Software Engineering) team project: an AI-enabled desktop bookstore built with Python and [PySide6](https://doc.qt.io/qtforpython-6/). Browse a 100-book catalogue, buy books, review them, chat with a local AI bookseller, and sign in with a password or your face.
+CCNY Fall 2026 (CSC 322, Software Engineering) team project (repo `ANJS_proj`): **Sonder**, an AI-enabled desktop bookstore built with Python and [PySide6](https://doc.qt.io/qtforpython-6/). Browse a 100-book catalogue, buy books, review them, chat with a local AI bookseller, and sign in with a password or your face.
 
 ## Contents
 
@@ -18,14 +18,15 @@ CCNY Fall 2026 (CSC 322, Software Engineering) team project: an AI-enabled deskt
 
 - Home page with search, categories and bestsellers; guests can browse and search.
 - Accounts (sign up, password sign-in, optional Face ID sign-in) with three roles: RC, VC and SU.
-- Cart and checkout (no payment step yet), order tracking and order history with *Buy again*.
+- Cart and a checkout flow: shipping and billing address and card, then a confirmation page with an itemized receipt, sales tax by billing ZIP, and the grand total. Order tracking and order history with *Buy again*.
+- Account page: change email or password, saved shipping and billing addresses, a saved card (last 4 digits and expiry only), and **AI preferences** for the Ask assistant.
 - Book reviews and star ratings with taboo-word moderation, warnings, suspensions and verified-buyer weighting.
 - Super-user tools: To-Order / No-Order lists, taboo-word list, suspended accounts.
 - **Ask:** chat with a local LLM (through Ollama) that knows the catalogue and, for signed-in users, their purchases and billing totals. For a super-user it also gets a bookstore financial summary (orders, sales, discounts, books sold).
 - Two colour themes (dark navy/yellow and light mint), phone-sized or full desktop window.
 - Search over titles, authors, subjects and descriptions that ranks title hits first and corrects misspellings.
 
-Not built yet: payment, real shipping (order status stays at "processing"), a real backend database. The Terms, Privacy and Help links on the sign-up page are text only.
+Not built yet: real payment processing (cards are validated but never charged), real shipping (order status stays at "processing"), a real backend database. The Terms, Privacy and Help links on the sign-up page are text only.
 
 ## Technologies
 
@@ -101,7 +102,11 @@ python -m gui --theme mint     # start in the light mint theme
 1. **Browse and search as a guest.** The home page shows search, categories and bestsellers. Click a book to see its description, price and rating. Guests see *Sign in to buy* instead of *Add to cart*, and the cart, Orders and Account tabs ask you to sign in.
 2. **Sign up.** Choose *Sign in > Create an account*, enter a name, an email and a password of at least 8 characters. Every new account is a Registered Customer (RC), and you are signed in straight away.
 3. **Sign in.** Use the **Password** tab with your email and password, or the **Face** tab for Face ID. Face ID needs model files, a webcam and a one-time enrollment: follow [FACE_ID_SETUP.md](FACE_ID_SETUP.md) (it enrolls with `python scripts/enroll_face.py`). A suspended account cannot sign in.
-4. **Add to cart and check out.** Use *Add to cart* on a book card or book page, open the **Cart** tab and press *Checkout*. The order is recorded immediately (there is no payment step). VC accounts get 10% off.
+4. **Add to cart and check out.** Use *Add to cart* on a book card or book page (or ask the AI to add one), open the **Cart** tab and press *Checkout*.
+   1. **Details:** enter the shipping address, the billing address (or tick *Same as shipping*) and a card. Anything saved on your Account page is filled in for you, and you can tick *Save* to keep new addresses or the card for next time.
+   2. **Confirmation:** an itemized receipt lists each book, the subtotal, the VIP discount (VC accounts get 10% off), sales tax and the **grand total**, plus where it ships and the card used. Press *Place order*; the page then shows your order number and *View my orders*.
+   - **Sales tax** is set by the **billing ZIP code** (`gui/tax.py`: approximate state rates plus a few city rates, for this class project only, not real tax advice). If a ZIP has no rate (for example Oregon, Montana, New Hampshire, Delaware, Alaska, or an unknown ZIP) the receipt says *"ZIP … is not taxable, so no sales tax was charged."*
+   - No real payment is taken: the card is checked for a valid number, expiry and CVV, then only its brand, last 4 digits and expiry are kept.
 5. **Orders.** The **Orders** tab has *Tracking* (orders on the way) and *History* (every book you bought, with *Buy again*). The home page shows an order tracker when you have one in progress.
 6. **Reviews and ratings.** On a book card, press *Reviews & Ratings* to read reviews and post your own (1 to 5 stars plus a comment). The [rules below](#review-and-moderation-rules) apply.
 7. **Ask (AI).** Open the **Ask** tab (signed-in users) and chat with the bookseller. It needs Ollama running:
@@ -110,7 +115,12 @@ python -m gui --theme mint     # start in the light mint theme
    ollama serve                # or just open the Ollama app
    ```
    If Ollama is not running, or the model is not installed, the chat shows the exact command to run.
-8. **Account page and theme.** The **Account** tab shows who you are, an *Appearance* switch, and *Sign out*. You can also switch theme any time with `View > Mint theme` (Ctrl+T). Colours live in `gui/theme.py`.
+8. **Account page and theme.** The **Account** tab shows who you are and lets you:
+   - **Change your email** (needs your current password; your orders and reviews move with it) or **change your password**.
+   - **Save shipping and billing addresses** and a **card** (only the last 4 digits and expiry are stored) to speed up checkout. *Replace* or *Remove* the card any time.
+   - Open **AI preferences** to tune the Ask assistant: reply length, tone, how many books it suggests, favourite categories, whether it uses your purchase history, creativity (model temperature), and a short note (for example "no horror"). Changes apply from your next message.
+   - Switch *Appearance* and *Sign out*.
+    You can also switch theme any time with `View > Mint theme` (Ctrl+T). Colours live in `gui/theme.py`.
 9. **Sign out.** *Account > Sign out* returns you to the guest home page. Your cart and Ask history are cleared.
 
 ## Roles
@@ -130,7 +140,7 @@ Public sign-up only ever creates RC accounts. To create an SU, run this from the
 python scripts/create_su.py
 ```
 
-It prompts for a name, an email and a password, refuses an email that already exists, and creates the account with role SU. Sign in with it as usual. (This script is being added on a separate branch; if it is not in your checkout yet, pull the latest `dev`.)
+It prompts for a name, an email and a password, refuses an email that already exists, and creates the account with role SU. Sign in with it as usual. 
 
 ### What the SU sees
 
@@ -159,8 +169,8 @@ This is a **local prototype store, not production security.**
 
 - **One JSON file:** `.data/store.json` in the project root, or `$ANJS_DATA_DIR/store.json` if you set `ANJS_DATA_DIR`. The `.data/` folder is git-ignored, so accounts never get committed. It does not exist until the app first saves something.
 - **What it holds:**
-  - `users`: per account (keyed by lower-case email) the name, email, role (`RC`, `VC` or `SU`), a **salted PBKDF2-SHA256 password hash plus its salt** (never the plain password), `shipping_address` (currently always empty), `purchase_count`, `total_spent`, `warnings`, `suspended`, and optionally `face_templates`.
-  - `orders`: a list of orders per user email (order number, date, status, book ids, total, and the discount applied). Only signed-in customers can check out.
+  - `users`: per account (keyed by lower-case email) the name, email, role (`RC`, `VC` or `SU`), a **salted PBKDF2-SHA256 password hash plus its salt** (never the plain password), `shipping_address` and `billing_address` (name, street, apt, city, state, ZIP), `payment_card` (**summary only**: cardholder, brand, last 4 digits, expiry month/year; the full number and CVV are never stored), `llm_prefs` (AI preferences), `purchase_count`, `total_spent`, `warnings`, `suspended`, and optionally `face_templates`.
+  - `orders`: a list of orders per user email (order number, date, status, book ids, `total` = merchandise after discount and before tax, the discount applied, and for orders placed through checkout also `subtotal`, `tax_rate`, `tax_amount`, `tax_note`, `grand_total`, the shipping and billing addresses, and the card summary). Only signed-in customers can check out.
   - `reviews`: a list of reviews per book id (author name and email, stars, the masked comment, verified-buyer flag, weight, date).
   - `taboo_words`: the moderation word list.
   - `next_order`: the next order number (starts at 1001).
