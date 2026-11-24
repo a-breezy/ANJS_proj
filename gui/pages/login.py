@@ -211,7 +211,10 @@ class LoginPage(Page):
             return self._show_pw_error("Enter your email address.")
         if not password:
             return self._show_pw_error("Enter your password.")
-        user = auth.authenticate_password(self.store, email, password)
+        try:
+            user = auth.authenticate_password(self.store, email, password)
+        except auth.AuthError as exc:
+            return self._show_pw_error(str(exc))
         if user is None:
             return self._show_pw_error("That email or password doesn't look right.")
         self.pw_error.hide()

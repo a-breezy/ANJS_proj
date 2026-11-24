@@ -45,12 +45,12 @@ def register(store: Store, name: str, email: str, password: str) -> User:
         raise AuthError("An account with that email already exists. Sign in instead.")
     salt = os.urandom(16)
     store.add_user({
-    "name": name,
-    "email": email,
-    "salt": salt.hex(),
-    "hash": _hash(password, salt),
-    "role": "RC"
-})
+        "name": name,
+        "email": email,
+        "salt": salt.hex(),
+        "hash": _hash(password, salt),
+        "role": "RC",
+    })
     return User(name=name, email=email)
 
 
@@ -58,15 +58,17 @@ def authenticate_password(store: Store, email: str, password: str) -> User | Non
     record = store.get_user(email)
     if record is None or not password:
         return None
-    if record.get("suspended", False):
-            raise AuthError("Account suspended. Contact a Super-User (SU) to reactivate.")
     if not hmac.compare_digest(record["hash"], _hash(password, bytes.fromhex(record["salt"]))):
         return None
+    # Only reveal suspension to someone who proved they know the password.
+    if record.get("suspended", False):
+        raise AuthError("Account suspended. Contact a Super-User (SU) to reactivate.")
     return User(
         name=record["name"],
         email=record["email"],
-        role=record.get("role", "RC")
-)
+        role=record.get("role", "RC"),
+    )
+
 
 def authenticate_face(store: Store, features: list[float]) -> User | None:
     from .face_login import find_user_by_face
