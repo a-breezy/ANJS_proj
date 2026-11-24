@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal
 
+from .checkout import ReceiptOrder
 from .data import Book, Order, User
 from .store import Store
 
@@ -72,7 +73,7 @@ class Session(QObject):
         if self.user is None:
             return []
         return [
-            Order.from_record(r)
+            ReceiptOrder.from_record(r)
             for r in reversed(self.store.orders_for(self.user.email))
         ]
 
@@ -89,30 +90,35 @@ class Session(QObject):
             for book in order.books
         ]
 
-    def checkout(self) -> Order | None:
-        # Only registered customers can buy; visitors browse only.
+    def checkout(
+        self,
+        shipping_address: dict | None = None,
+        billing_address: dict | None = None,
+        payment_card: dict | None = None,
+    ) -> Order | None:
+        """Place the order for the cart and clear it.
+
+        The addresses come from billing.clean_address and the card is the safe
+        summary from billing.clean_card (never a number or CVV). The billing
+        ZIP sets the sales tax. Returns None for no user, a visitor or an
+        empty cart."""
         if not self.cart or self.user is None or self.user.is_visitor:
             return None
 
-        # Registered customer checkout
-        order = Order.from_record(
-            self.store.add_order(
-                self.user.email,
-                [book.id for book in self.cart]
-            )
+        details = None
+        if shipping_address or billing_address or payment_card:
+            details = {
+                "shipping_address": shipping_address,
+                "billing_address": billing_address,
+                "payment_card": payment_card,
+            }
+        order = ReceiptOrder.from_record(
+            self.store.add_order(self.user.email, [book.id for book in self.cart], details)
         )
 
         updated_user = self.store.get_user(self.user.email)
-
-        if (
-            updated_user is not None
-            and updated_user["role"] != self.user.role
-        ):
-            self.user = User(
-                name=self.user.name,
-                email=self.user.email,
-                role=updated_user["role"]
-            )
+        if updated_user is not None and updated_user["role"] != self.user.role:
+            self.user = User(name=self.user.name, email=self.user.email, role=updated_user["role"])
             self.user_changed.emit()
 
         self.cart.clear()

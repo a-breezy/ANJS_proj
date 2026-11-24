@@ -14,6 +14,8 @@ import os
 from typing import Callable
 from datetime import date
 from pathlib import Path
+from .billing import ADDRESS_FIELDS
+from .checkout import quote
 from .data import book_by_id
 
 DEFAULT_DIR = Path(__file__).resolve().parents[1] / ".data"
@@ -269,25 +271,32 @@ class Store:
             "total_discounts": round(
                 sum(o.get("discount_amount", 0.0) for o in orders), 2
             ),
+            "total_tax": round(
+                sum(o.get("tax_amount", 0.0) for o in orders), 2
+            ),
             "books_sold": sum(
                 len(o.get("book_ids", [])) for o in orders
             ),
         }
 
-    def add_order(self, email: str, book_ids: list[int]) -> dict:
-        order_total = 0.0
-        for book_id in book_ids:
-            book = book_by_id(book_id)
-            if book is not None:
-                order_total += book.price
-
+    def add_order(self, email: str, book_ids: list[int], checkout: dict | None = None) -> dict:
+        """Place an order. ``checkout`` (optional) holds ``shipping_address``,
+        ``billing_address`` and ``payment_card`` (a clean_card summary); the
+        billing ZIP then sets the sales tax. The full card number is never
+        accepted: only the summary keys are kept."""
+        books = [b for b in map(book_by_id, book_ids) if b is not None]
         key = email.strip().lower()
+        checkout = checkout or {}
+        card = checkout.get("payment_card")
+        if card and set(card) - CARD_SUMMARY_KEYS:
+            raise ValueError("Only a card summary may be stored (see billing.clean_card).")
 
         def place(data: dict) -> dict:
             user = data["users"].get(key)
-            discount_rate = 0.10 if user and user["role"] == "VC" else 0.0
-            discount_amount = round(order_total * discount_rate, 2)
-            final_total = round(order_total - discount_amount, 2)
+            role = user["role"] if user else "RC"
+            billing = checkout.get("billing_address")
+            priced = quote(books, role, (billing or {}).get("zip", ""))
+            final_total = float(priced.taxable)  # merchandise total, before tax
 
             order = {
                 "number": data["next_order"],
@@ -296,8 +305,19 @@ class Store:
                 "progress": 0.15,
                 "book_ids": list(book_ids),
                 "total": final_total,
-                "discount_amount": discount_amount,
+                "discount_amount": float(priced.discount),
             }
+            if checkout:
+                order.update({
+                    "subtotal": float(priced.subtotal),
+                    "tax_rate": float(priced.tax_rate) if priced.tax_rate is not None else None,
+                    "tax_amount": float(priced.tax_amount),
+                    "tax_note": priced.tax_note,
+                    "grand_total": float(priced.grand_total),
+                    "shipping_address": _pick(checkout.get("shipping_address"), ADDRESS_FIELDS),
+                    "billing_address": _pick(billing, ADDRESS_FIELDS),
+                    "payment_card": _pick(card, CARD_SUMMARY_KEYS),
+                })
             data["next_order"] += 1
             data["orders"].setdefault(key, []).append(order)
             if user is not None:
@@ -310,6 +330,16 @@ class Store:
                 spent_since = user["total_spent"] - baseline.get("spent", 0.0)
                 if user["role"] == "RC" and (purchases_since > 3 or spent_since > 200):
                     user["role"] = "VC"
-            return dict(order)
+            return copy.deepcopy(order)
 
         return self.update(place)
+
+
+CARD_SUMMARY_KEYS = {"cardholder", "brand", "last4", "exp_month", "exp_year"}
+
+
+def _pick(source: dict | None, keys) -> dict | None:
+    """A copy of ``source`` with only ``keys`` (None stays None)."""
+    if not source:
+        return None
+    return {k: source[k] for k in source if k in keys}
