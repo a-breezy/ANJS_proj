@@ -131,9 +131,8 @@ class PromotionTests(UserReviewCase):
         self.assertEqual(self.role(), "RC")
 
     def test_demoted_vc_not_repromoted_by_next_order(self):
-        user = self.store.get_user("ann@example.com")
-        user["purchase_count"], user["total_spent"] = 5, 250.0
-        self.store._save()
+        self.store.update_user("ann@example.com", lambda u: u.update(
+            purchase_count=5, total_spent=250.0))
         self.demote()
         self.order()
         self.assertEqual(self.role(), "RC")
@@ -147,9 +146,7 @@ class PromotionTests(UserReviewCase):
         self.assertEqual(self.role(), "VC")
 
     def test_never_demoted_user_promotes_over_200_dollars(self):
-        user = self.store.get_user("ann@example.com")
-        user["total_spent"] = 200.0
-        self.store._save()
+        self.store.update_user("ann@example.com", lambda u: u.update(total_spent=200.0))
         self.order()  # total_spent now above 200 only if the book costs > 0
         self.assertEqual(self.role(), "VC")
 

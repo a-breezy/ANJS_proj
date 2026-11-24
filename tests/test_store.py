@@ -68,5 +68,40 @@ class RoleTests(StoreTestCase):
             create_su.create_su(self.store, "Root", "root@example.com", "password123")
 
 
+class StaleWriterTests(StoreTestCase):
+    def test_second_writer_does_not_clobber_first(self):
+        auth.register(self.store, "Jane", "jane@example.com", "password123")
+        a, b = Store(self.path), Store(self.path)  # b opened before a's change
+        a.add_face_template("jane@example.com", [0.5] * 128)
+        b.update_user("jane@example.com", lambda u: u.update(shipping_address="1 Main St"))
+        user = Store(self.path).get_user("jane@example.com")
+        self.assertEqual(len(user["face_templates"]), 1)
+        self.assertEqual(user["shipping_address"], "1 Main St")
+
+    def test_template_survives_later_review_submission(self):
+        from gui.reviews import ReviewService
+        auth.register(self.store, "Jane", "jane@example.com", "password123")
+        service = ReviewService(self.store)  # opened before enrollment
+        Store(self.path).add_face_template("jane@example.com", [0.5] * 128)  # enroll script
+        service.submit_review(1, "Jane", "jane@example.com", 5, "great")
+        user = Store(self.path).get_user("jane@example.com")
+        self.assertEqual(len(user["face_templates"]), 1)
+        self.assertEqual(len(Store(self.path).get_reviews(1)), 1)
+
+    def test_reads_see_other_writers_changes(self):
+        other = Store(self.path)
+        auth.register(other, "Jane", "jane@example.com", "password123")
+        self.assertIsNotNone(self.store.get_user("jane@example.com"))
+
+    def test_failed_update_saves_nothing(self):
+        def boom(data):
+            data["next_order"] = 999
+            raise RuntimeError
+        with self.assertRaises(RuntimeError):
+            self.store.update(boom)
+        self.assertNotEqual(Store(self.path)._data["next_order"], 999)
+        self.assertNotEqual(self.store._data["next_order"], 999)
+
+
 if __name__ == "__main__":
     unittest.main()
