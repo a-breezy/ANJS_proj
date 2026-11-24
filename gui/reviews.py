@@ -24,6 +24,7 @@ class ReviewService:
     # --- Purchase Verification --------------------------------------------
     def has_purchased(self, email: str | None, book_id: int) -> bool:
         """Return True if the signed-in user has ordered this book."""
+        # Harmless guard: guest checkout no longer exists (see Session.checkout).
         if not email or email.strip().lower() == "guest":
             return False
         for order in self.store.orders_for(email):
