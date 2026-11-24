@@ -113,14 +113,14 @@ class ReviewService:
         stars: int,
         comment: str,
     ) -> dict:
-        """Post a review, mask 1-2 taboo words, or block >=3 and penalize user."""
+        """Post a review, mask 1-3 taboo words, or block more than 3 and penalize user."""
         stars = max(1, min(5, int(stars)))
         cleaned_comment, taboo_count = self.filter_taboo(comment.strip())
 
-        if taboo_count >= 3:
+        if taboo_count > 3:
             demoted = False
             suspended = False
-            msg = f"Comment blocked: contained {taboo_count} taboo words."
+            msg = f"Comment blocked: contained {taboo_count} taboo words (more than 3 is not allowed)."
 
             user = self.store.get_user(author_email) if author_email else None
             if user is not None and user.get("role") != "SU":

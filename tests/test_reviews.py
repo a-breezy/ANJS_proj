@@ -7,7 +7,7 @@ from unittest import mock
 
 os.environ.setdefault("ANJS_CATALOG", "sample")
 
-from gui import data
+from gui import auth, data
 from gui.reviews import ReviewService
 from gui.store import Store
 
@@ -50,6 +50,35 @@ class OrderListTests(ReviewTestCase):
         self.visitor_reviews(b, [5, 3, 5, 3])  # avg exactly 4.0
         self.assertEqual(self.service.no_order_books(), [])
         self.assertEqual(self.service.to_order_books(), [])
+
+
+class TabooTests(ReviewTestCase):
+    def setUp(self):
+        super().setUp()
+        auth.register(self.store, "Ann", "ann@example.com", "password123")
+        self.book = REAL_BOOKS[0]
+
+    def post(self, comment, email="ann@example.com"):
+        return self.service.submit_review(self.book.id, "Ann", email, 3, comment)
+
+    def warnings(self, email="ann@example.com"):
+        return self.store.get_user(email).get("warnings", 0)
+
+    def test_three_taboo_words_accepted_and_masked(self):
+        result = self.post("spam scam trash")
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["masked_count"], 3)
+        self.assertEqual(self.service.reviews_for(self.book.id)[0]["comment"], "**** **** *****")
+        self.assertEqual(self.warnings(), 0)
+
+    def test_four_taboo_words_blocked_with_warning(self):
+        result = self.post("spam scam trash idiot")
+        self.assertFalse(result["accepted"])
+        self.assertEqual(self.warnings(), 1)
+        self.assertEqual(self.service.rating_summary(self.book.id), (0.0, 0))
+
+    def test_repeated_word_counts_each_time(self):
+        self.assertFalse(self.post("spam spam spam spam")["accepted"])
 
 
 if __name__ == "__main__":

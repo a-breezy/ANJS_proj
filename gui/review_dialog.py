@@ -195,7 +195,7 @@ class SuperUserModerationDialog(QDialog):
         # Tab 2: Taboo Words Management
         taboo_tab = QWidget()
         taboo_col = QVBoxLayout(taboo_tab)
-        taboo_col.addWidget(make_label("Taboo Words (1-2 masked with *, 3+ blocks comment)", "muted", wrap=True))
+        taboo_col.addWidget(make_label("Taboo Words (1-3 masked with *, more than 3 blocks the comment)", "muted", wrap=True))
 
         add_row = QHBoxLayout()
         self.word_input = QLineEdit()
