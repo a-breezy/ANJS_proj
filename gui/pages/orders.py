@@ -17,6 +17,15 @@ def _clear(layout) -> None:
             widget.deleteLater()
 
 
+def order_total_text(order) -> str:
+    """e.g. 'Total $21.59 (incl. $1.60 tax)'; older orders show their saved total only."""
+    grand = getattr(order, "grand_total", None)
+    if grand is None:
+        return f"Total ${order.total:.2f}"
+    tax = getattr(order, "tax_amount", None) or 0.0
+    return f"Total ${grand:.2f} (incl. ${tax:.2f} tax)" if tax else f"Total ${grand:.2f} (no sales tax)"
+
+
 class OrderStatusCard(QFrame):
     """Order number, status and a progress bar."""
 
@@ -48,7 +57,7 @@ class OrderStatusCard(QFrame):
         self.title.setText(f"Order #{order.number}: {order.status}")
         books = order.books
         count = f"{len(books)} book" + ("" if len(books) == 1 else "s")
-        self.detail.setText(f"Placed {order.placed_text} · {count}")
+        self.detail.setText(f"Placed {order.placed_text} · {count} · {order_total_text(order)}")
         self.progress.set_value(order.progress)
 
 
@@ -66,7 +75,7 @@ class HistoryRow(QFrame):
         text.setSpacing(0)
         text.addWidget(make_label(book.title, "book", wrap=True))
         text.addWidget(make_label(book.author, "author"))
-        text.addWidget(make_label(f"Order #{order.number} · {order.placed_text}", "author"))
+        text.addWidget(make_label(f"Order #{order.number} · {order.placed_text} · {order_total_text(order)}", "author"))
         row.addLayout(text, 1)
         row.addWidget(make_label(book.price_text, "price"))
         row.addSpacing(6)

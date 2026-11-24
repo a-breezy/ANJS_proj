@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QStackedWidget, QVBoxLayout
 
 from ..session import Session
 from ..widgets import Column, Page, make_button, make_label
+from .checkout import CheckoutConfirmPage, CheckoutDetailsPage
 
 
 class CartPage(Page):
@@ -16,8 +17,11 @@ class CartPage(Page):
         self.session = session
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
+        # Steps: 0 cart, 1 checkout details, 2 confirmation / receipt.
+        self.steps = QStackedWidget()
+        outer.addWidget(self.steps)
         column = Column(max_width=900)
-        outer.addWidget(column)
+        self.steps.addWidget(column)
         col = column.col
         col.addWidget(make_label("Your cart", "h2"))
         self.items = QVBoxLayout()
@@ -31,14 +35,67 @@ class CartPage(Page):
         self.checkout = make_button("Checkout", "primary", height=54)
         self.checkout.clicked.connect(self._checkout)
         col.addWidget(self.checkout)
-        session.cart_changed.connect(self.refresh)
+
+        self.details = CheckoutDetailsPage(session)
+        self.confirm = CheckoutConfirmPage(session)
+        self.steps.addWidget(self.details)
+        self.steps.addWidget(self.confirm)
+        self.details.back_requested.connect(self.show_cart)
+        self.details.continued.connect(self._show_confirmation)
+        self.confirm.back_requested.connect(self._edit_details)
+        self.confirm.orders_requested.connect(self._view_orders)
+        session.cart_changed.connect(self._cart_changed)
+        session.user_changed.connect(self.show_cart)  # sign in/out starts clean
         self.refresh()
 
+    # --- checkout flow -------------------------------------------------------
+    @property
+    def step(self) -> str:
+        return ("cart", "details", "confirm")[self.steps.currentIndex()]
+
+    def show_cart(self) -> None:
+        """Back to the cart, with a clean checkout for next time."""
+        self.details.reset()
+        self.confirm.reset()
+        self.steps.setCurrentIndex(0)
+
     def _checkout(self) -> None:
-        # Payment isn't built yet: checkout records the order straight away.
-        order = self.session.checkout()
+        if self.session.cart and self.session.user is not None and not self.session.user.is_visitor:
+            self.details.reset()
+            self.confirm.reset()
+            self.steps.setCurrentIndex(1)
+
+    def _show_confirmation(self, details: dict) -> None:
+        self.confirm.show_details(details)
+        self.steps.setCurrentIndex(2)
+
+    def _edit_details(self) -> None:
+        self.steps.setCurrentIndex(1)
+
+    def _view_orders(self) -> None:
+        order = self.confirm.order
+        self.show_cart()
         if order is not None:
             self.checked_out.emit(order)
+
+    def _cart_changed(self) -> None:
+        self.refresh()
+        if self.confirm.placing:
+            return
+        if self.confirm.placed:
+            # The order has been placed. A later cart change means a new shopping trip.
+            if self.session.cart:
+                self.show_cart()
+        elif self.step != "cart":
+            if not self.session.cart:
+                self.show_cart()
+            else:
+                self.confirm.refresh()
+
+    def hideEvent(self, event) -> None:
+        if self.confirm.placed:
+            self.show_cart()
+        super().hideEvent(event)
 
     def refresh(self) -> None:
         while self.items.count():
