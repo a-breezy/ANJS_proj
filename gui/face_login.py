@@ -46,4 +46,8 @@ def find_user_by_face(store: Store, features: list[float]) -> User | None:
     if len(matches) > 1 and best_score - matches[1][0] < MIN_GAP:
         return None
 
-    return User(name=best_account["name"], email=best_account["email"])
+    return User(
+        name=best_account["name"],
+        email=best_account["email"],
+        role=best_account["role"],
+    )

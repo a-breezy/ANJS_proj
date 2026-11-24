@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from datetime import date
 
-from .data import SAMPLE_BOOKS, Book
+from .data import Book, book_by_id
 from .store import Store
 
 DEFAULT_TABOO_WORDS = ["spam", "scam", "trash", "idiot"]
@@ -18,20 +18,13 @@ class ReviewService:
         self._ensure_schema()
 
     def _ensure_schema(self) -> None:
-        data = self.store._data
-        changed = False
-        if "reviews" not in data:
-            data["reviews"] = {}
-            changed = True
-        if "taboo_words" not in data:
-            data["taboo_words"] = list(DEFAULT_TABOO_WORDS)
-            changed = True
-        if changed:
-            self.store._save()
+        if self.store.get_taboo_words() is None:
+            self.store.set_taboo_words(DEFAULT_TABOO_WORDS)
 
     # --- Purchase Verification --------------------------------------------
     def has_purchased(self, email: str | None, book_id: int) -> bool:
         """Return True if the signed-in user has ordered this book."""
+        # Harmless guard: guest checkout no longer exists (see Session.checkout).
         if not email or email.strip().lower() == "guest":
             return False
         for order in self.store.orders_for(email):
@@ -41,24 +34,23 @@ class ReviewService:
 
     # --- Taboo Words (SU-maintained) --------------------------------------
     def taboo_words(self) -> list[str]:
-        return list(self.store._data.get("taboo_words", []))
+        return self.store.get_taboo_words() or []
 
     def add_taboo_word(self, word: str) -> bool:
         cleaned = word.strip().lower()
-        words = self.store._data.setdefault("taboo_words", [])
+        words = self.taboo_words()
         if not cleaned or cleaned in words:
             return False
-        words.append(cleaned)
-        self.store._save()
+        self.store.set_taboo_words([*words, cleaned])
         return True
 
     def remove_taboo_word(self, word: str) -> bool:
         cleaned = word.strip().lower()
-        words = self.store._data.get("taboo_words", [])
+        words = self.taboo_words()
         if cleaned not in words:
             return False
         words.remove(cleaned)
-        self.store._save()
+        self.store.set_taboo_words(words)
         return True
 
     def filter_taboo(self, text: str) -> tuple[str, int]:
@@ -84,7 +76,7 @@ class ReviewService:
     # --- Reviews & Weighted Ratings ---------------------------------------
     def reviews_for(self, book_id: int) -> list[dict]:
         """Return reviews for a book with verified buyers sorted to the top."""
-        raw = list(self.store._data.get("reviews", {}).get(str(book_id), []))
+        raw = self.store.get_reviews(book_id)
         return sorted(raw, key=lambda r: (not r.get("verified_buyer", False)))
 
     def rating_summary(self, book_id: int) -> tuple[float, int]:
@@ -92,7 +84,7 @@ class ReviewService:
 
         Verified buyers receive weight 2.0; non-buyers receive weight 1.0.
         """
-        reviews = self.store._data.get("reviews", {}).get(str(book_id), [])
+        reviews = self.store.get_reviews(book_id)
         if not reviews:
             return 0.0, 0
 
@@ -113,37 +105,51 @@ class ReviewService:
         stars: int,
         comment: str,
     ) -> dict:
-        """Post a review, mask 1-2 taboo words, or block >=3 and penalize user."""
+        """Post a review, mask 1-3 taboo words, or block more than 3 and penalize user."""
         stars = max(1, min(5, int(stars)))
         cleaned_comment, taboo_count = self.filter_taboo(comment.strip())
 
-        if taboo_count >= 3:
+        if taboo_count > 3:
             demoted = False
             suspended = False
-            msg = f"Comment blocked: contained {taboo_count} taboo words."
+            msg = f"Comment blocked: contained {taboo_count} taboo words (more than 3 is not allowed)."
 
-            user = self.store.get_user(author_email) if author_email else None
-            if user is not None and user.get("role") != "SU":
+            def penalize(user: dict) -> tuple[str, bool, bool]:
+                if user.get("role") == "SU":
+                    return "", False, False
                 warnings = user.get("warnings", 0) + 1
                 user["warnings"] = warnings
-
-                if warnings >= 2:
+                extra, demoted, suspended = "", False, False
+                # Spec: more than 2 warnings (i.e. the 3rd) suspends an RC.
+                # Team choice for VCs: the spec says "a VC will be demoted to
+                # an RC"; we demote on the same trigger (warnings > 2) and
+                # reset warnings to 0. To demote on every warning instead,
+                # change this to `warnings >= 1` for the VC branch.
+                if warnings > 2:
                     if user.get("role") == "VC":
                         user["role"] = "RC"
                         user["warnings"] = 0
+                        # Stop the next order from instantly re-promoting them.
+                        user["promotion_baseline"] = {
+                            "purchases": user.get("purchase_count", 0),
+                            "spent": user.get("total_spent", 0.0),
+                        }
                         demoted = True
-                        msg += (
-                            " You reached 2 warnings and were demoted from VIP (VC) "
+                        extra = (
+                            " You reached 3 warnings and were demoted from VIP (VC) "
                             "to Registered Customer (RC)."
                         )
                     else:
                         user["suspended"] = True
                         suspended = True
-                        msg += " You reached 2 warnings and your account has been suspended."
+                        extra = " You reached 3 warnings and your account has been suspended."
                 else:
-                    msg += f" Warning issued ({warnings}/2)."
+                    extra = f" Warning issued ({warnings}/3)."
+                return extra, demoted, suspended
 
-                self.store._save()
+            if author_email and self.store.get_user(author_email) is not None:
+                extra, demoted, suspended = self.store.update_user(author_email, penalize)
+                msg += extra
 
             return {
                 "accepted": False,
@@ -153,6 +159,10 @@ class ReviewService:
                 "suspended": suspended,
             }
 
+        # One review per signed-in author per book: add_review replaces their
+        # earlier one. A blocked comment returned above, so it never replaces.
+        # TODO(team): decide visitor limits (visitors have no email, so they
+        # can still post several reviews on one book).
         verified = self.has_purchased(author_email, book_id)
         entry = {
             "author_name": author_name.strip() or "Visitor",
@@ -163,8 +173,7 @@ class ReviewService:
             "weight": 2.0 if verified else 1.0,
             "placed": date.today().isoformat(),
         }
-        self.store._data.setdefault("reviews", {}).setdefault(str(book_id), []).append(entry)
-        self.store._save()
+        self.store.add_review(book_id, entry)
 
         msg = "Review posted!"
         if taboo_count > 0:
@@ -179,34 +188,38 @@ class ReviewService:
         }
 
     # --- SU Order Lists & Account Reactivation ----------------------------
+    def _rated_books(self) -> list[tuple[Book, float, int]]:
+        """(book, weighted average, review count) for every reviewed catalog book."""
+        rated = []
+        for key in self.store.review_book_ids():
+            book = book_by_id(key)
+            if book is None:
+                continue
+            avg, count = self.rating_summary(book.id)
+            rated.append((book, avg, count))
+        return rated
+
     def no_order_books(self) -> list[tuple[Book, float, int]]:
         """Books with > 3 reviews and weighted average rating < 2.0 (SU only)."""
-        return [
-            (book, avg, count)
-            for book in SAMPLE_BOOKS
-            for avg, count in [self.rating_summary(book.id)]
-            if count > 3 and avg < 2.0
-        ]
+        return [(b, avg, n) for b, avg, n in self._rated_books() if n > 3 and avg < 2.0]
 
     def to_order_books(self) -> list[tuple[Book, float, int]]:
         """Books with > 3 reviews and weighted average rating > 4.0 (SU only)."""
-        return [
-            (book, avg, count)
-            for book in SAMPLE_BOOKS
-            for avg, count in [self.rating_summary(book.id)]
-            if count > 3 and avg > 4.0
-        ]
+        return [(b, avg, n) for b, avg, n in self._rated_books() if n > 3 and avg > 4.0]
 
     def suspended_users(self) -> list[dict]:
         return [
-            dict(u)
-            for u in self.store._data.get("users", {}).values()
+            u
+            for u in self.store.list_users()
             if u.get("suspended", False)
         ]
 
     def unsuspend_user(self, email: str) -> None:
-        user = self.store.get_user(email)
-        if user is not None:
+        def clear(user: dict) -> None:
             user["suspended"] = False
             user["warnings"] = 0
-            self.store._save()
+
+        try:
+            self.store.update_user(email, clear)
+        except ValueError:
+            pass  # unknown account: nothing to reactivate

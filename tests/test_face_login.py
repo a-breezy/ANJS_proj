@@ -34,6 +34,17 @@ class FaceLoginTests(unittest.TestCase):
         user = auth.authenticate_face(self.store, sample(0))
         self.assertEqual(user.email, "jane@example.com")
 
+    def test_role_is_preserved(self):
+        for index, role in ((3, "VC"), (4, "SU")):
+            email = f"{role.lower()}@example.com"
+            auth.register(self.store, role, email, "password123")
+            if role != "RC":
+                self.store.set_role(email, role)
+            self.store.add_face_template(email, sample(index))
+            self.assertEqual(find_user_by_face(self.store, sample(index)).role, role)
+            # Regression: the auth hook must return the role too.
+            self.assertEqual(auth.authenticate_face(self.store, sample(index)).role, role)
+
     def test_wrong_face(self):
         self.assertIsNone(find_user_by_face(self.store, sample(1)))
 

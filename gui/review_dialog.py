@@ -195,7 +195,7 @@ class SuperUserModerationDialog(QDialog):
         # Tab 2: Taboo Words Management
         taboo_tab = QWidget()
         taboo_col = QVBoxLayout(taboo_tab)
-        taboo_col.addWidget(make_label("Taboo Words (1-2 masked with *, 3+ blocks comment)", "muted", wrap=True))
+        taboo_col.addWidget(make_label("Taboo Words (1-3 masked with *, more than 3 blocks the comment)", "muted", wrap=True))
 
         add_row = QHBoxLayout()
         self.word_input = QLineEdit()
@@ -217,7 +217,7 @@ class SuperUserModerationDialog(QDialog):
         # Tab 3: Suspended Users
         susp_tab = QWidget()
         susp_col = QVBoxLayout(susp_tab)
-        susp_col.addWidget(make_label("Suspended Accounts (2 warnings as RC)", "muted"))
+        susp_col.addWidget(make_label("Suspended Accounts (more than 2 warnings as RC)", "muted"))
         self.susp_list = QListWidget()
         susp_col.addWidget(self.susp_list)
         unsusp_btn = make_button("Reactivate Selected Account", "primary", height=36)

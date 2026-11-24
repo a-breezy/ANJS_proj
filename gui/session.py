@@ -90,21 +90,9 @@ class Session(QObject):
         ]
 
     def checkout(self) -> Order | None:
-        if not self.cart:
+        # Only registered customers can buy; visitors browse only.
+        if not self.cart or self.user is None or self.user.is_visitor:
             return None
-
-        # Guest checkout
-        if self.user is None or self.user.is_visitor:
-            order = Order.from_record(
-                self.store.add_order(
-                    "guest",
-                    [book.id for book in self.cart]
-                )
-            )
-            self.cart.clear()
-            self.cart_changed.emit()
-            self.orders_changed.emit()
-            return order
 
         # Registered customer checkout
         order = Order.from_record(
