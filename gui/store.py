@@ -16,6 +16,7 @@ from .data import book_by_id
 
 DEFAULT_DIR = Path(__file__).resolve().parents[1] / ".data"
 FIRST_ORDER_NUMBER = 1001
+VALID_ROLES = {"RC", "VC", "SU"}  # "VS" (visitor) is never stored
 
 
 def default_path() -> Path:
@@ -53,15 +54,29 @@ class Store:
         if email in self._data["users"]:
             raise KeyError(email)
 
+        role = record.get("role", "RC")
+        if role not in VALID_ROLES:
+            raise ValueError(f"Invalid role: {role!r}")
+
         self._data["users"][email] = {
-            **record,
-            "email": email,
-            "role": "RC",
             "shipping_address": "",
             "purchase_count": 0,
             "total_spent": 0.0,
+            **record,
+            "email": email,
+            "role": role,
         }
 
+        self._save()
+
+    def set_role(self, email: str, role: str) -> None:
+        """Change an existing account's role (RC, VC or SU) and save."""
+        if role not in VALID_ROLES:
+            raise ValueError(f"Invalid role: {role!r}")
+        record = self.get_user(email)
+        if record is None:
+            raise ValueError("Account not found.")
+        record["role"] = role
         self._save()
 
     def add_face_template(self, email: str, features: list[float]) -> None:
