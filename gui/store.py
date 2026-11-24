@@ -129,6 +129,63 @@ class Store:
             raise ValueError(f"Invalid role: {role!r}")
         self.update_user(email, lambda record: record.__setitem__("role", role))
 
+    # --- profile: addresses, saved card, AI preferences ----------------------
+    # Validate with gui.billing before saving. payment_card is only ever the
+    # safe summary from billing.clean_card (never a full number or CVV).
+    PROFILE_KEYS = ("shipping_address", "billing_address", "payment_card", "llm_prefs")
+
+    def get_profile(self, email: str) -> dict:
+        """{"shipping_address", "billing_address", "payment_card": dict | None,
+        "llm_prefs": dict}. Raises ValueError if the account does not exist."""
+        record = self.get_user(email)
+        if record is None:
+            raise ValueError("Account not found.")
+        profile = {key: record.get(key) or None for key in self.PROFILE_KEYS}
+        profile["llm_prefs"] = profile["llm_prefs"] or {}
+        return profile
+
+    def update_profile(self, email: str, **fields) -> None:
+        """Set any of PROFILE_KEYS; passing None clears that field."""
+        unknown = set(fields) - set(self.PROFILE_KEYS)
+        if unknown:
+            raise KeyError(f"Not profile fields: {sorted(unknown)}")
+        card = fields.get("payment_card")
+        if card and set(card) - {"cardholder", "brand", "last4", "exp_month", "exp_year"}:
+            raise ValueError("Only a card summary may be stored (see billing.clean_card).")
+
+        def apply(record: dict) -> None:
+            for key, value in fields.items():
+                if value is None:
+                    record.pop(key, None)
+                else:
+                    record[key] = copy.deepcopy(value)
+
+        self.update_user(email, apply)
+
+    def change_email(self, old: str, new: str) -> None:
+        """Move an account (and its orders and reviews) to a new email.
+        Raises ValueError if the old account is missing or the new one exists."""
+        old_key, new_key = old.strip().lower(), new.strip().lower()
+
+        def move(data: dict) -> None:
+            if old_key not in data["users"]:
+                raise ValueError("Account not found.")
+            if new_key == old_key:
+                return
+            if new_key in data["users"]:
+                raise ValueError("An account with that email already exists.")
+            record = data["users"].pop(old_key)
+            record["email"] = new_key
+            data["users"][new_key] = record
+            if old_key in data["orders"]:
+                data["orders"][new_key] = data["orders"].pop(old_key)
+            for reviews in data["reviews"].values():
+                for review in reviews:
+                    if review.get("author_email") == old_key:
+                        review["author_email"] = new_key
+
+        self.update(move)
+
     def add_face_template(self, email: str, features: list[float]) -> None:
         """Save one face scan for an existing account."""
         if len(features) != 128 or not all(math.isfinite(x) for x in features):
