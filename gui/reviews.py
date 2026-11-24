@@ -127,21 +127,26 @@ class ReviewService:
                 warnings = user.get("warnings", 0) + 1
                 user["warnings"] = warnings
 
-                if warnings >= 2:
+                # Spec: more than 2 warnings (i.e. the 3rd) suspends an RC.
+                # Team choice for VCs: the spec says "a VC will be demoted to
+                # an RC"; we demote on the same trigger (warnings > 2) and
+                # reset warnings to 0. To demote on every warning instead,
+                # change this to `warnings >= 1` for the VC branch.
+                if warnings > 2:
                     if user.get("role") == "VC":
                         user["role"] = "RC"
                         user["warnings"] = 0
                         demoted = True
                         msg += (
-                            " You reached 2 warnings and were demoted from VIP (VC) "
+                            " You reached 3 warnings and were demoted from VIP (VC) "
                             "to Registered Customer (RC)."
                         )
                     else:
                         user["suspended"] = True
                         suspended = True
-                        msg += " You reached 2 warnings and your account has been suspended."
+                        msg += " You reached 3 warnings and your account has been suspended."
                 else:
-                    msg += f" Warning issued ({warnings}/2)."
+                    msg += f" Warning issued ({warnings}/3)."
 
                 self.store._save()
 

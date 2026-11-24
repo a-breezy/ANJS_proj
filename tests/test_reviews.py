@@ -52,7 +52,7 @@ class OrderListTests(ReviewTestCase):
         self.assertEqual(self.service.to_order_books(), [])
 
 
-class TabooTests(ReviewTestCase):
+class UserReviewCase(ReviewTestCase):
     def setUp(self):
         super().setUp()
         auth.register(self.store, "Ann", "ann@example.com", "password123")
@@ -63,6 +63,9 @@ class TabooTests(ReviewTestCase):
 
     def warnings(self, email="ann@example.com"):
         return self.store.get_user(email).get("warnings", 0)
+
+
+class TabooTests(UserReviewCase):
 
     def test_three_taboo_words_accepted_and_masked(self):
         result = self.post("spam scam trash")
@@ -79,6 +82,38 @@ class TabooTests(ReviewTestCase):
 
     def test_repeated_word_counts_each_time(self):
         self.assertFalse(self.post("spam spam spam spam")["accepted"])
+
+
+class WarningTests(UserReviewCase):
+    BAD = "spam scam trash idiot"
+
+    def test_rc_suspended_on_third_blocked_comment(self):
+        for n in (1, 2):
+            result = self.post(self.BAD)
+            self.assertIn(f"Warning issued ({n}/3)", result["message"])
+        user = self.store.get_user("ann@example.com")
+        self.assertEqual(user["warnings"], 2)
+        self.assertFalse(user.get("suspended", False))
+        result = self.post(self.BAD)
+        self.assertTrue(result["suspended"])
+        self.assertTrue(self.store.get_user("ann@example.com")["suspended"])
+
+    def test_vc_demoted_to_rc_after_three_warnings(self):
+        self.store.set_role("ann@example.com", "VC")
+        for _ in range(3):
+            result = self.post(self.BAD)
+        user = self.store.get_user("ann@example.com")
+        self.assertTrue(result["demoted"])
+        self.assertEqual((user["role"], user["warnings"]), ("RC", 0))
+        self.assertFalse(user.get("suspended", False))
+
+    def test_su_never_warned(self):
+        self.store.set_role("ann@example.com", "SU")
+        for _ in range(4):
+            self.post(self.BAD)
+        user = self.store.get_user("ann@example.com")
+        self.assertEqual(user.get("warnings", 0), 0)
+        self.assertEqual(user["role"], "SU")
 
 
 if __name__ == "__main__":
