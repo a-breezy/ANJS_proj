@@ -147,7 +147,7 @@ In the **Ask** tab, an SU is given a bookstore financial summary (total orders, 
 These are the project spec rules the review code implements:
 
 - **Taboo words:** a comment with 1 to 3 taboo words is accepted and each taboo word is replaced by `*` characters. A comment with **more than 3** taboo words is blocked and the author gets a warning. Repeats of the same word each count.
-- **Warnings and suspension:** an **RC** who gets more than 2 warnings (the 3rd) is **suspended** and must be reactivated by an SU. A **VC** who would go past 2 warnings is instead **demoted to RC** and their warnings reset to 0. SU authors are never warned.
+- **Warnings and suspension:** an **RC** who gets more than 2 warnings (the 3rd) is **suspended** and must be reactivated by an SU. A **VC** who would go past 2 warnings is instead **demoted to RC** and their warnings reset to 0. SU authors are never warned. A demoted VC has to earn VIP status again: only purchases and spending *after* the demotion count toward the next promotion (more than 3 purchases or more than $200).
 - **One review per user per book:** each signed-in user has one review per book. Posting again replaces the old one.
 - **Verified buyers:** if you have ordered the book, your review is marked as a verified buyer and its stars count **double** in the weighted average. Verified reviews are listed first.
 - **To-Order / No-Order:** a book with more than 3 reviews and a weighted average **below 2** goes on the SU **No-Order** list; **above 4** goes on the **To-Order** list. Exactly 2.0 or 4.0 is on neither list.
@@ -160,7 +160,7 @@ This is a **local prototype store, not production security.**
 - **One JSON file:** `.data/store.json` in the project root, or `$ANJS_DATA_DIR/store.json` if you set `ANJS_DATA_DIR`. The `.data/` folder is git-ignored, so accounts never get committed. It does not exist until the app first saves something.
 - **What it holds:**
   - `users`: per account (keyed by lower-case email) the name, email, role (`RC`, `VC` or `SU`), a **salted PBKDF2-SHA256 password hash plus its salt** (never the plain password), `shipping_address` (currently always empty), `purchase_count`, `total_spent`, `warnings`, `suspended`, and optionally `face_templates`.
-  - `orders`: a list of orders per user email (order number, date, status, book ids, total, and the discount applied). Guest checkouts, if any, are stored under `guest`.
+  - `orders`: a list of orders per user email (order number, date, status, book ids, total, and the discount applied). Only signed-in customers can check out.
   - `reviews`: a list of reviews per book id (author name and email, stars, the masked comment, verified-buyer flag, weight, date).
   - `taboo_words`: the moderation word list.
   - `next_order`: the next order number (starts at 1001).

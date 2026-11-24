@@ -21,7 +21,7 @@ class AuthPasswordTests(unittest.TestCase):
         auth.register(self.store, "Sam Student", "sam@example.com", PASSWORD)
 
     def _suspend(self):
-        self.store.get_user("sam@example.com")["suspended"] = True
+        self.store.update_user("sam@example.com", lambda r: r.__setitem__("suspended", True))
 
     def test_wrong_password_suspended_returns_none(self):
         self._suspend()
@@ -34,7 +34,7 @@ class AuthPasswordTests(unittest.TestCase):
         self.assertIn("suspended", str(ctx.exception).lower())
 
     def test_right_password_active_returns_user_with_role(self):
-        self.store.get_user("sam@example.com")["role"] = "SU"
+        self.store.set_role("sam@example.com", "SU")
         user = auth.authenticate_password(self.store, "sam@example.com", PASSWORD)
         self.assertEqual(user.email, "sam@example.com")
         self.assertEqual(user.role, "SU")
@@ -55,7 +55,7 @@ class LoginPageSuspendedTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(Path(tmp) / "store.json")
             auth.register(store, "Sam Student", "sam@example.com", PASSWORD)
-            store.get_user("sam@example.com")["suspended"] = True
+            store.update_user("sam@example.com", lambda r: r.__setitem__("suspended", True))
             page = LoginPage(store)
             page.email.setText("sam@example.com")
             page.password.setText(PASSWORD)
