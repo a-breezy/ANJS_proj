@@ -245,9 +245,25 @@ class GuiSmokeTests(unittest.TestCase):
         self.win.session.add_to_cart(SAMPLE_BOOKS[0])
         self.win.session.add_to_cart(SAMPLE_BOOKS[2])
         self.win.shell.show_tab("cart")
-        self.win.shell.cart.checkout.click()
-
+        cart = self.win.shell.cart
+        cart.checkout.click()  # opens the details step; nothing is ordered yet
+        self.assertEqual(len(self.win.session.cart), 2)
+        self.assertEqual(self.store.orders_for("jane.doe@example.com"), [])
+        details = cart.details
+        details.shipping.set_address(
+            {"name": "Jane Doe", "line1": "1 Main St", "city": "New York", "state": "NY", "zip": "10031"}
+        )
+        details.card_number.setText("4242 4242 4242 4242")
+        details.card_name.setText("Jane Doe")
+        details.exp_month.setText("12")
+        details.exp_year.setText("2099")
+        details.cvv.setText("123")
+        details.continue_btn.click()
+        self.assertEqual(cart.step, "confirm")
+        cart.confirm.place_btn.click()
         self.assertEqual(self.win.session.cart, [])
+        cart.confirm.orders_btn.click()
+
         self.assertEqual(self.win.shell.current_tab(), "orders")
         orders = self.win.shell.orders
         self.assertEqual(orders.tabs.current, "tracking")
