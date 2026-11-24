@@ -25,6 +25,20 @@ MAX_PROMPT_BOOKS = 40  # catalog lines per prompt, so it doesn't grow with the c
 MAX_HISTORY_MESSAGES = 12  # chat messages sent along with the system prompt
 
 
+# What the model may do to the cart. The app, not the model, carries it out (see gui.chat_actions).
+CART_ACTION_RULES = [
+    "",
+    "Cart actions:",
+    "You can add books to the customer's cart. To add a book, finish your reply with one line like",
+    "[[add_to_cart: 84]] using the id shown in brackets after the book in the catalog (one line per book).",
+    "Use that line only when the customer clearly asks you to add a specific book.",
+    "The app adds the book and tells the customer, so do not say in your own words that it was added.",
+    "Never say or imply that a book is in the cart unless you wrote that line.",
+    "You cannot check out, pay, remove books, empty the cart or change orders. If asked, tell the",
+    "customer to use the Cart tab.",
+]
+
+
 class LLMError(RuntimeError):
     """A problem talking to the local model, worded for the user."""
 
@@ -71,7 +85,7 @@ def system_prompt(
         "",
         "Catalog:",
     ]
-    lines += [f"- {b.title} by {b.author} ({b.category}, {b.price_text})" for b in _prompt_books(catalog, purchased, query)]
+    lines += [f"- {b.title} by {b.author} ({b.category}, {b.price_text}) [id {b.id}]" for b in _prompt_books(catalog, purchased, query)]
     bought = sorted({b.title for b in purchased})
     if bought:
         lines += ["", "The customer has already bought: " + "; ".join(bought) + "."]
@@ -108,6 +122,9 @@ def system_prompt(
             "",
             "Visitors cannot use the AI assistant.",
         ]
+
+    if role in ("RC", "VC", "SU"):
+        lines += CART_ACTION_RULES
 
     if role in ("RC", "VC"):
         order_list = list(orders)

@@ -2,7 +2,9 @@
 
 Replies stream in from Ollama (see :mod:`gui.llm`) on a background thread so
 the window stays responsive. The model is told about the catalog and, when
-someone is signed in, the books they have already bought.
+someone is signed in, the books they have already bought. It can also add
+books to the cart, but only through :mod:`gui.chat_actions`, which the app
+carries out and reports (the model never changes the cart by itself).
 """
 from __future__ import annotations
 
@@ -11,7 +13,7 @@ import threading
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
 
-from .. import data, llm
+from .. import chat_actions, data, llm
 from ..session import Session
 from ..widgets import Page, make_button, make_label, scroll_column
 
@@ -165,6 +167,14 @@ class ChatPage(Page):
         self.suggestions.hide()
         self._history.append({"role": "user", "content": text})
         self.messages.addWidget(Bubble(text, "user"))
+
+        # "add <title> to my cart" is done by the app itself, without asking the model.
+        requests = chat_actions.explicit_add_request(text, data.BOOKS)
+        if requests is not None:
+            reply, _added = chat_actions.run_requests(self.session, requests)
+            self._reply_locally(reply)
+            return
+
         self._pending = Bubble("Thinking…", "bot")
         self._reply = ""
         self.messages.addWidget(self._pending)
@@ -194,6 +204,12 @@ class ChatPage(Page):
         threading.Thread(target=_stream, args=(self._bridge, self._request_id, messages), daemon=True).start()
 
     # --- internals --------------------------------------------------------
+    def _reply_locally(self, text: str) -> None:
+        """Show an answer the app wrote itself (no model call) and keep it in the conversation."""
+        self.messages.addWidget(Bubble(text, "bot"))
+        self._history.append({"role": "assistant", "content": text})
+        self._scroll_to_end()
+
     def _send_input(self) -> None:
         text = self.input.text()
         if text.strip() and not self.busy:
@@ -205,14 +221,20 @@ class ChatPage(Page):
         self.send_btn.setText("…" if busy else "Send")
 
     def _scroll_to_end(self) -> None:
-        bar = self.scroll.verticalScrollBar()
-        QTimer.singleShot(0, lambda: bar.setValue(bar.maximum()))
+        def go() -> None:
+            try:
+                bar = self.scroll.verticalScrollBar()
+                bar.setValue(bar.maximum())
+            except RuntimeError:  # the window was closed before the timer fired
+                pass
+
+        QTimer.singleShot(0, go)
 
     def _on_chunk(self, request_id: int, piece: str) -> None:
         if request_id != self._request_id or self._pending is None:
             return
         self._reply += piece
-        self._pending.set_text(self._reply)
+        self._pending.set_text(chat_actions.strip_markers(self._reply, streaming=True))
         self._scroll_to_end()
 
     def _on_failed(self, request_id: int, message: str) -> None:
@@ -230,8 +252,27 @@ class ChatPage(Page):
     def _on_done(self, request_id: int) -> None:
         if request_id != self._request_id or self._pending is None:
             return
-        self._history.append({"role": "assistant", "content": self._reply})
-        if not self._reply:
+        text = self._finish_reply(self._reply)
+        self._history.append({"role": "assistant", "content": text})
+        if not text:
             self._pending.set_text("(The model didn't reply. Try asking another way.)")
+        else:
+            self._pending.set_text(text)
         self._pending = None
         self._set_busy(False)
+        self._scroll_to_end()
+
+    def _finish_reply(self, raw: str) -> str:
+        """Carry out any cart request in the model's reply and return the text to show.
+
+        The customer only sees what actually happened: confirmations come from the app,
+        and a claim that the cart changed, with no request behind it, gets a warning.
+        """
+        shown = chat_actions.strip_markers(raw)
+        args = chat_actions.extract_add_requests(raw)
+        if args:
+            lines, _added = chat_actions.run_model_markers(self.session, args)
+            return "\n\n".join(part for part in [shown, *lines] if part)
+        if chat_actions.claims_cart_change(shown):
+            return f"{shown}\n\n{chat_actions.NOT_ADDED_WARNING}"
+        return shown

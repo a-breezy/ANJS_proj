@@ -321,6 +321,64 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertEqual(chat._history, [])
         self.assertTrue(chat.send_btn.isEnabled())
 
+    def _chat_with_model(self, reply_pieces, text):
+        """Sign up, ask ``text`` in the chat with a fake model, return (chat, model_was_called)."""
+        called = {"n": 0}
+
+        def fake_stream(messages, **_kwargs):
+            called["n"] += 1
+            yield from reply_pieces
+
+        original, llm.stream_chat = llm.stream_chat, fake_stream
+        try:
+            self.sign_up()
+            chat = self.win.shell.chat
+            self.win.shell.show_tab("ask")
+            chat.send(text)
+            _wait_until(lambda: not chat.busy)
+        finally:
+            llm.stream_chat = original
+        return chat, called["n"] > 0
+
+    def test_chat_adds_named_book_to_cart_without_the_model(self) -> None:
+        chat, model_called = self._chat_with_model(["unused"], "Please add The Quiet Orchard to my cart")
+        self.assertFalse(model_called)
+        self.assertEqual([b.title for b in self.win.session.cart], ["The Quiet Orchard"])
+        self.assertIn("Added **The Quiet Orchard**", chat._history[-1]["content"])
+        self.assertFalse(chat.busy)
+
+    def test_chat_does_not_add_the_same_book_twice(self) -> None:
+        chat, _ = self._chat_with_model(["unused"], "add The Quiet Orchard to my cart")
+        chat.send("add The Quiet Orchard to my cart")
+        self.assertEqual(len(self.win.session.cart), 1)
+        self.assertIn("already in your cart", chat._history[-1]["content"])
+
+    def test_chat_reports_unknown_title_and_adds_nothing(self) -> None:
+        chat, _ = self._chat_with_model(["unused"], "add Quantum Gardening to my cart")
+        self.assertEqual(self.win.session.cart, [])
+        self.assertIn("couldn't find", chat._history[-1]["content"])
+
+    def test_chat_runs_model_cart_marker_and_hides_it(self) -> None:
+        chat, model_called = self._chat_with_model(
+            ["Great choice! ", "[[add_to_c", "art: 2]]"], "Recommend something about systems"
+        )
+        self.assertTrue(model_called)
+        self.assertEqual([b.id for b in self.win.session.cart], [2])
+        reply = chat._history[-1]["content"]
+        self.assertNotIn("[[", reply)
+        self.assertIn("Great choice!", reply)
+        self.assertIn("Added **Small Systems**", reply)
+
+    def test_chat_warns_when_model_claims_an_add_it_did_not_make(self) -> None:
+        chat, _ = self._chat_with_model(["Sure, I've added it to your cart!"], "I'd love the orchard one, can you grab it?")
+        self.assertEqual(self.win.session.cart, [])
+        self.assertIn("Nothing was added to your cart", chat._history[-1]["content"])
+
+    def test_chat_ignores_marker_for_unknown_id(self) -> None:
+        chat, _ = self._chat_with_model(["Done [[add_to_cart: 999999]]"], "Suggest a book")
+        self.assertEqual(self.win.session.cart, [])
+        self.assertNotIn("[[", chat._history[-1]["content"])
+
     # --- theme ------------------------------------------------------------
     def test_theme_switch_after_grids_rebuilt(self) -> None:
         _chip(self.win, "Fiction").click()  # rebuilds the grid, deleting old cards
