@@ -26,7 +26,6 @@ from PySide6.QtWidgets import QApplication, QPushButton  # noqa: E402
 from gui import auth, llm  # noqa: E402
 from gui.app import MainWindow  # noqa: E402
 from gui.data import SAMPLE_BOOKS  # noqa: E402
-from gui.pages import login as login_module  # noqa: E402
 from gui.pages.catalog import GuestBookCard, UserBookCard, columns_for  # noqa: E402
 from gui.store import Store  # noqa: E402
 from gui.theme import build_qss, theme  # noqa: E402
