@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout
 
 from ..session import Session
 from ..widgets import Avatar, Column, Page, ThemeSwitch, make_button, make_label
-
+from ..review_dialog import SuperUserModerationDialog
 
 class AccountPage(Page):
     sign_out_requested = Signal()
@@ -36,6 +36,9 @@ class AccountPage(Page):
         col.addSpacing(8)
         col.addWidget(make_label("Appearance", "field"))
         col.addWidget(ThemeSwitch())
+        self.su_btn = make_button("SU: Order Lists & Taboo Words", "primary", height=46)
+        self.su_btn.clicked.connect(lambda: SuperUserModerationDialog(self.session, self).exec())
+        col.addWidget(self.su_btn)
         col.addStretch()
         sign_out = make_button("Sign out", "outline", height=50)
         sign_out.clicked.connect(self.sign_out_requested)
@@ -48,3 +51,4 @@ class AccountPage(Page):
         self.avatar.set_initial(user.initial if user else "?")
         self.name.setText(user.name if user else "")
         self.email.setText(user.email if user else "")
+        self.su_btn.setVisible(bool(user and user.is_admin))

@@ -35,6 +35,21 @@ class Session(QObject):
         self.cart_changed.emit()
         self.orders_changed.emit()
 
+    def sync_user_from_store(self) -> None:
+        """Refresh active user role or sign out immediately if suspended."""
+        if self.user is None or self.user.is_visitor:
+            return
+        record = self.store.get_user(self.user.email)
+        if record is None:
+            return
+        if record.get("suspended", False):
+            self.sign_out()
+            return
+        new_role = record.get("role", self.user.role)
+        if new_role != self.user.role:
+            self.user = User(name=self.user.name, email=self.user.email, role=new_role)
+            self.user_changed.emit()
+
     def add_to_cart(self, book: Book) -> None:
         self.cart.append(book)
         self.cart_changed.emit()

@@ -58,15 +58,21 @@ def authenticate_password(store: Store, email: str, password: str) -> User | Non
     record = store.get_user(email)
     if record is None or not password:
         return None
+    if record.get("suspended", False):
+            raise AuthError("Account suspended. Contact a Super-User (SU) to reactivate.")
     if not hmac.compare_digest(record["hash"], _hash(password, bytes.fromhex(record["salt"]))):
         return None
     return User(
-    name=record["name"],
-    email=record["email"],
-    role=record.get("role", "RC")
+        name=record["name"],
+        email=record["email"],
+        role=record.get("role", "RC")
 )
-
 
 def authenticate_face(store: Store, features: list[float]) -> User | None:
     from .face_login import find_user_by_face
-    return find_user_by_face(store, features)
+    user = find_user_by_face(store, features)
+    if user is not None:
+        record = store.get_user(user.email)
+        if record and record.get("suspended", False):
+            raise AuthError("Account suspended. Contact a Super-User (SU) to reactivate.")
+    return user
