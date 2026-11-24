@@ -26,7 +26,6 @@ from PySide6.QtWidgets import QApplication, QPushButton  # noqa: E402
 from gui import auth, llm  # noqa: E402
 from gui.app import MainWindow  # noqa: E402
 from gui.data import SAMPLE_BOOKS  # noqa: E402
-from gui.pages import login as login_module  # noqa: E402
 from gui.pages.catalog import GuestBookCard, UserBookCard, columns_for  # noqa: E402
 from gui.store import Store  # noqa: E402
 from gui.theme import build_qss, theme  # noqa: E402
@@ -222,16 +221,12 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertNotIn(PASSWORD, self.store.path.read_text())
 
     def test_face_scan_does_not_sign_in_without_enrolled_face(self) -> None:
-        original = login_module.SCAN_MS
-        login_module.SCAN_MS = 30
-        try:
-            self.win.show_login()
-            self.win.login.scan_btn.click()
-            self.assertFalse(self.win.login.scan_btn.isEnabled())
-            QTest.qWait(200)
-        finally:
-            login_module.SCAN_MS = original
+        self.win.show_login()
+        self.win.login.scan_btn.click()
+        self.assertTrue(self.win.login.scan_btn.isEnabled())
+        self.assertIn("No face enrolled", self.win.login.caption.text())
         self.assertIs(self.win.stack.currentWidget(), self.win.login)
+        self.assertIsNone(self.win.session.user)
 
     # --- cart, orders and history ----------------------------------------
     def test_add_to_cart_updates_badge_and_cart_page(self) -> None:
@@ -295,6 +290,7 @@ class GuiSmokeTests(unittest.TestCase):
 
         original, llm.stream_chat = llm.stream_chat, fake_stream
         try:
+            self.sign_up()
             chat = self.win.shell.chat
             self.win.shell.show_tab("ask")
             chat.input.setText("Something gentle")
@@ -306,6 +302,7 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertFalse(chat.busy)
         self.assertEqual(seen["messages"][0]["role"], "system")
         self.assertIn("The Quiet Orchard", seen["messages"][0]["content"])
+        self.assertIn("registered customer", seen["messages"][0]["content"])
         self.assertEqual(seen["messages"][-1], {"role": "user", "content": "Something gentle"})
         self.assertEqual(chat._history[-1], {"role": "assistant", "content": "Try *The Quiet Orchard*."})
 

@@ -181,6 +181,7 @@ class ChatPage(Page):
                     purchased,
                     role=role,
                     orders=self.session.orders,
+                    query=text,
                     financial_summary=(
                         self.session.store.financial_summary()
                         if role == "SU"
@@ -188,7 +189,7 @@ class ChatPage(Page):
                     ),
                 ),
             },
-            *self._history,
+            *self._history[-llm.MAX_HISTORY_MESSAGES:],
         ]
         threading.Thread(target=_stream, args=(self._bridge, self._request_id, messages), daemon=True).start()
 

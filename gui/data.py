@@ -198,11 +198,18 @@ def bestsellers(category: str = "All", limit: int | None = None) -> list[Book]:
     return books if limit is None else books[:limit]
 
 
-def recommended(count: int = 4) -> list[Book]:
-    """Best-rated books with enough ratings to trust; the first few books otherwise."""
-    rated = [b for b in BOOKS if b.rating is not None and b.rating_count >= 20]
+def recommended(count: int = 3, exclude: set[int] | None = None) -> list[Book]:
+    """Best-rated books with enough ratings to trust, topped up from the catalog.
+
+    ``exclude`` holds book ids (e.g. ones already bought) that must not appear.
+    """
+    skip = exclude or set()
+    pool = [b for b in BOOKS if b.id not in skip]
+    rated = [b for b in pool if b.rating is not None and b.rating_count >= 20]
     rated.sort(key=lambda b: b.rating, reverse=True)
-    return (rated or BOOKS)[:count]
+    picks = rated[:count]
+    picks += [b for b in pool if b not in picks][: count - len(picks)]
+    return picks
 
 
 def search(query: str, category: str = "All") -> list[Book]:
