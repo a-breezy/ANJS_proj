@@ -45,7 +45,7 @@ class HomePage(Page):
         header.setContentsMargins(0, 0, 0, 0)
         header.addWidget(Logo(38))
         header.addSpacing(10)
-        self.brand = make_label("[App name]", "brand")
+        self.brand = make_label("Sonder", "brand")
         header.addWidget(self.brand)
         header.addStretch()
         create = make_button("Create account", "outline", height=42)

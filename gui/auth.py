@@ -32,13 +32,26 @@ def _hash(password: str, salt: bytes) -> str:
     return hashlib.pbkdf2_hmac("sha256", password.encode(), salt, _ITERATIONS).hex()
 
 
+def _check_email(email: str) -> None:
+    local, _, domain = email.partition("@")
+    if not local or "." not in domain:
+        raise AuthError("Enter a valid email address.")
+
+
+def _verified_record(store: Store, email: str, password: str) -> dict:
+    record = store.get_user(email)
+    if record is None or not password or not hmac.compare_digest(
+        record["hash"], _hash(password, bytes.fromhex(record["salt"]))
+    ):
+        raise AuthError("That password isn't right.")
+    return record
+
+
 def register(store: Store, name: str, email: str, password: str) -> User:
     name, email = name.strip(), email.strip().lower()
     if not name:
         raise AuthError("Enter your name.")
-    local, _, domain = email.partition("@")
-    if not local or "." not in domain:
-        raise AuthError("Enter a valid email address.")
+    _check_email(email)
     if len(password) < MIN_PASSWORD:
         raise AuthError(f"Use at least {MIN_PASSWORD} characters for your password.")
     if store.get_user(email):
@@ -52,6 +65,34 @@ def register(store: Store, name: str, email: str, password: str) -> User:
         "role": "RC",
     })
     return User(name=name, email=email)
+
+
+def change_email(store: Store, email: str, password: str, new_email: str) -> User:
+    """Move the account to ``new_email`` (needs the current password); orders and reviews follow."""
+    record = _verified_record(store, email, password)
+    new_email = new_email.strip().lower()
+    _check_email(new_email)
+    if new_email != record["email"] and store.get_user(new_email):
+        raise AuthError("That email is already used by another account.")
+    try:
+        store.change_email(record["email"], new_email)
+    except ValueError as exc:
+        raise AuthError("That email is already used by another account.") from exc
+    return User(name=record["name"], email=new_email, role=record.get("role", "RC"))
+
+
+def change_password(store: Store, email: str, current: str, new: str) -> None:
+    """Set a new password after checking the current one (new salt every time)."""
+    record = _verified_record(store, email, current)
+    if len(new) < MIN_PASSWORD:
+        raise AuthError(f"Use at least {MIN_PASSWORD} characters for your new password.")
+    salt = os.urandom(16)
+
+    def apply(rec: dict) -> None:
+        rec["salt"] = salt.hex()
+        rec["hash"] = _hash(new, salt)
+
+    store.update_user(record["email"], apply)
 
 
 def authenticate_password(store: Store, email: str, password: str) -> User | None:

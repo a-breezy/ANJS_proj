@@ -33,7 +33,7 @@ class SignUpPage(Page):
 
         root.addWidget(Logo(56), 0, Qt.AlignmentFlag.AlignHCenter)
         root.addSpacing(8)
-        root.addWidget(make_label("[App name]", "brand", align=Qt.AlignmentFlag.AlignCenter))
+        root.addWidget(make_label("Sonder", "brand", align=Qt.AlignmentFlag.AlignCenter))
         root.addSpacing(18)
         root.addWidget(make_label("Create Account", "h1", align=Qt.AlignmentFlag.AlignCenter, wrap=True))
         root.addSpacing(18)
@@ -60,7 +60,7 @@ class SignUpPage(Page):
 
         # Placeholder legal text: there are no Terms or Privacy pages yet
         terms = make_label(
-            "By creating an account, you agree to the [App name] <u>Terms of Service</u> and <u>Privacy Policy</u>.",
+            "By creating an account, you agree to the Sonder <u>Terms of Service</u> and <u>Privacy Policy</u>.",
             "caption",
             wrap=True,
         )
@@ -81,7 +81,7 @@ class SignUpPage(Page):
         root.addSpacing(24)
         root.addWidget(make_label("Terms of Service      Privacy      Help", "muted", align=Qt.AlignmentFlag.AlignCenter))
         root.addSpacing(6)
-        root.addWidget(make_label("© 2026 [App name]", "muted", align=Qt.AlignmentFlag.AlignCenter))
+        root.addWidget(make_label("© 2026 Sonder", "muted", align=Qt.AlignmentFlag.AlignCenter))
 
         self.name.returnPressed.connect(self.email.setFocus)
         self.email.returnPressed.connect(self.password.setFocus)
