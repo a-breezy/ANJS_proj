@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from datetime import date
 
-from .data import SAMPLE_BOOKS, Book
+from .data import Book, book_by_id
 from .store import Store
 
 DEFAULT_TABOO_WORDS = ["spam", "scam", "trash", "idiot"]
@@ -179,23 +179,24 @@ class ReviewService:
         }
 
     # --- SU Order Lists & Account Reactivation ----------------------------
+    def _rated_books(self) -> list[tuple[Book, float, int]]:
+        """(book, weighted average, review count) for every reviewed catalog book."""
+        rated = []
+        for key in self.store._data.get("reviews", {}):
+            book = book_by_id(int(key))
+            if book is None:
+                continue
+            avg, count = self.rating_summary(book.id)
+            rated.append((book, avg, count))
+        return rated
+
     def no_order_books(self) -> list[tuple[Book, float, int]]:
         """Books with > 3 reviews and weighted average rating < 2.0 (SU only)."""
-        return [
-            (book, avg, count)
-            for book in SAMPLE_BOOKS
-            for avg, count in [self.rating_summary(book.id)]
-            if count > 3 and avg < 2.0
-        ]
+        return [(b, avg, n) for b, avg, n in self._rated_books() if n > 3 and avg < 2.0]
 
     def to_order_books(self) -> list[tuple[Book, float, int]]:
         """Books with > 3 reviews and weighted average rating > 4.0 (SU only)."""
-        return [
-            (book, avg, count)
-            for book in SAMPLE_BOOKS
-            for avg, count in [self.rating_summary(book.id)]
-            if count > 3 and avg > 4.0
-        ]
+        return [(b, avg, n) for b, avg, n in self._rated_books() if n > 3 and avg > 4.0]
 
     def suspended_users(self) -> list[dict]:
         return [
