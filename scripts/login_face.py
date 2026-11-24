@@ -10,15 +10,11 @@ sys.path.insert(0, str(PROJECT))
 
 from gui.face_login import find_user_by_face
 from gui.store import Store
-from gui.face_camera import get_features
-
-MODELS = PROJECT / ".data" / "models"
+from gui.face_camera import CAMERA_INDEX, SFACE_FILE, YOLO_FILE, YUNET_FILE, get_features
 
 
 def main():
-    names = ["yolov8n-face.pt", "face_detection_yunet_2023mar.onnx",
-             "face_recognition_sface_2021dec.onnx"]
-    files = [MODELS / name for name in names]
+    files = [YOLO_FILE, YUNET_FILE, SFACE_FILE]
     for file in files:
         if not file.is_file():
             print("Missing model:", file)
@@ -32,7 +28,7 @@ def main():
     yolo = YOLO(str(files[0]))
     detector = cv2.FaceDetectorYN.create(str(files[1]), "", (320, 320))
     recognizer = cv2.FaceRecognizerSF.create(str(files[2]), "")
-    camera = cv2.VideoCapture(0)
+    camera = cv2.VideoCapture(CAMERA_INDEX)
     if not camera.isOpened():
         print("Could not open the webcam.")
         return

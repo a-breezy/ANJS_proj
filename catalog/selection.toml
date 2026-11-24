@@ -1,0 +1,650 @@
+# The books in the store, picked by hand for variety: era, origin, genre,
+# length, and more women and authors of colour than a "most popular" list.
+# Guidelines: at most 2 books per author, English text only.
+#
+# Edit this file, then run:  python scripts/build_catalog.py
+# Only new ids are fetched; existing ones are reused from catalog.json.
+#
+#   id        Project Gutenberg number (gutenberg.org/ebooks/<id>)
+#   category  shelf in the app; the order here is the order of the chips
+#   title     display title (Gutenberg's own titles are often long)
+#   author    display name (Gutenberg lists translators and editors too)
+#
+# Optional, to fix a bad automatic match:
+#   openlibrary  Open Library work to use, e.g. "/works/OL2564006W"
+#   year         first-publication year to show
+#   description  text to show when neither source has a good one
+
+# --- Classic novels ----------------------------------------------
+[[book]]
+id = 1342
+category = "Classic novels"
+title = "Pride and Prejudice"
+author = "Jane Austen"
+
+[[book]]
+id = 1260
+category = "Classic novels"
+title = "Jane Eyre"
+author = "Charlotte Brontë"
+
+[[book]]
+id = 145
+category = "Classic novels"
+title = "Middlemarch"
+author = "George Eliot"
+
+[[book]]
+id = 1400
+category = "Classic novels"
+title = "Great Expectations"
+author = "Charles Dickens"
+
+[[book]]
+id = 2701
+category = "Classic novels"
+title = "Moby-Dick"
+author = "Herman Melville"
+
+[[book]]
+id = 76
+category = "Classic novels"
+title = "Adventures of Huckleberry Finn"
+author = "Mark Twain"
+
+[[book]]
+id = 160
+category = "Classic novels"
+title = "The Awakening and Selected Short Stories"
+author = "Kate Chopin"
+
+[[book]]
+id = 541
+category = "Classic novels"
+title = "The Age of Innocence"
+author = "Edith Wharton"
+
+[[book]]
+id = 64317
+category = "Classic novels"
+title = "The Great Gatsby"
+author = "F. Scott Fitzgerald"
+
+[[book]]
+id = 472
+category = "Classic novels"
+title = "The House Behind the Cedars"
+author = "Charles W. Chesnutt"
+
+[[book]]
+id = 62940
+category = "Classic novels"
+title = "Mrs. Spring Fragrance"
+author = "Sui Sin Far"
+
+
+# --- World literature --------------------------------------------
+[[book]]
+id = 2554
+category = "World literature"
+title = "Crime and Punishment"
+author = "Fyodor Dostoyevsky"
+
+[[book]]
+id = 1399
+category = "World literature"
+title = "Anna Karenina"
+author = "Leo Tolstoy"
+
+[[book]]
+id = 996
+category = "World literature"
+title = "Don Quixote"
+author = "Miguel de Cervantes"
+
+[[book]]
+id = 2413
+category = "World literature"
+title = "Madame Bovary"
+author = "Gustave Flaubert"
+
+[[book]]
+id = 5200
+category = "World literature"
+title = "Metamorphosis"
+author = "Franz Kafka"
+
+[[book]]
+id = 19942
+category = "World literature"
+title = "Candide"
+author = "Voltaire"
+
+[[book]]
+id = 128
+category = "World literature"
+title = "The Arabian Nights Entertainments"
+author = "Andrew Lang"
+
+[[book]]
+id = 14591
+category = "World literature"
+title = "Faust"
+author = "Johann Wolfgang von Goethe"
+
+[[book]]
+id = 1004
+category = "World literature"
+title = "The Divine Comedy"
+author = "Dante Alighieri"
+
+[[book]]
+id = 66057
+category = "World literature"
+title = "The Tale of Genji"
+author = "Murasaki Shikibu"
+openlibrary = "/works/OL2564006W"  # catalogued as "Genji monogatari"
+year = 1008
+
+[[book]]
+id = 9603
+category = "World literature"
+title = "Dream of the Red Chamber (Book I)"
+author = "Cao Xueqin"
+
+[[book]]
+id = 8868
+category = "World literature"
+title = "Botchan"
+author = "Natsume Sōseki"
+
+
+# --- Mystery -----------------------------------------------------
+[[book]]
+id = 1661
+category = "Mystery"
+title = "The Adventures of Sherlock Holmes"
+author = "Arthur Conan Doyle"
+
+[[book]]
+id = 2852
+category = "Mystery"
+title = "The Hound of the Baskervilles"
+author = "Arthur Conan Doyle"
+
+[[book]]
+id = 155
+category = "Mystery"
+title = "The Moonstone"
+author = "Wilkie Collins"
+
+[[book]]
+id = 204
+category = "Mystery"
+title = "The Innocence of Father Brown"
+author = "G. K. Chesterton"
+
+[[book]]
+id = 863
+category = "Mystery"
+title = "The Mysterious Affair at Styles"
+author = "Agatha Christie"
+
+[[book]]
+id = 4047
+category = "Mystery"
+title = "The Leavenworth Case"
+author = "Anna Katharine Green"
+
+[[book]]
+id = 434
+category = "Mystery"
+title = "The Circular Staircase"
+author = "Mary Roberts Rinehart"
+
+[[book]]
+id = 2568
+category = "Mystery"
+title = "Trent's Last Case"
+author = "E. C. Bentley"
+
+
+# --- Sci-fi & fantasy --------------------------------------------
+[[book]]
+id = 84
+category = "Sci-fi & fantasy"
+title = "Frankenstein"
+author = "Mary Shelley"
+
+[[book]]
+id = 35
+category = "Sci-fi & fantasy"
+title = "The Time Machine"
+author = "H. G. Wells"
+
+[[book]]
+id = 36
+category = "Sci-fi & fantasy"
+title = "The War of the Worlds"
+author = "H. G. Wells"
+
+[[book]]
+id = 32
+category = "Sci-fi & fantasy"
+title = "Herland"
+author = "Charlotte Perkins Gilman"
+openlibrary = "/works/OL2771987W"  # search picks her better-known The Yellow Wallpaper
+year = 1915
+
+[[book]]
+id = 62
+category = "Sci-fi & fantasy"
+title = "A Princess of Mars"
+author = "Edgar Rice Burroughs"
+
+[[book]]
+id = 164
+category = "Sci-fi & fantasy"
+title = "Twenty Thousand Leagues Under the Sea"
+author = "Jules Verne"
+
+[[book]]
+id = 97
+category = "Sci-fi & fantasy"
+title = "Flatland"
+author = "Edwin A. Abbott"
+
+[[book]]
+id = 59112
+category = "Sci-fi & fantasy"
+title = "R.U.R. (Rossum's Universal Robots)"
+author = "Karel Čapek"
+
+
+# --- Horror & gothic ---------------------------------------------
+[[book]]
+id = 345
+category = "Horror & gothic"
+title = "Dracula"
+author = "Bram Stoker"
+
+[[book]]
+id = 10007
+category = "Horror & gothic"
+title = "Carmilla"
+author = "J. Sheridan Le Fanu"
+
+[[book]]
+id = 209
+category = "Horror & gothic"
+title = "The Turn of the Screw"
+author = "Henry James"
+
+[[book]]
+id = 174
+category = "Horror & gothic"
+title = "The Picture of Dorian Gray"
+author = "Oscar Wilde"
+
+[[book]]
+id = 2148
+category = "Horror & gothic"
+title = "The Works of Edgar Allan Poe, Volume 2"
+author = "Edgar Allan Poe"
+
+[[book]]
+id = 1952
+category = "Horror & gothic"
+title = "The Yellow Wallpaper"
+author = "Charlotte Perkins Gilman"
+
+
+# --- Adventure ---------------------------------------------------
+[[book]]
+id = 120
+category = "Adventure"
+title = "Treasure Island"
+author = "Robert Louis Stevenson"
+
+[[book]]
+id = 1184
+category = "Adventure"
+title = "The Count of Monte Cristo"
+author = "Alexandre Dumas"
+
+[[book]]
+id = 215
+category = "Adventure"
+title = "The Call of the Wild"
+author = "Jack London"
+
+[[book]]
+id = 103
+category = "Adventure"
+title = "Around the World in Eighty Days"
+author = "Jules Verne"
+
+[[book]]
+id = 60
+category = "Adventure"
+title = "The Scarlet Pimpernel"
+author = "Baroness Orczy"
+
+[[book]]
+id = 2226
+category = "Adventure"
+title = "Kim"
+author = "Rudyard Kipling"
+
+
+# --- Poetry & drama ----------------------------------------------
+[[book]]
+id = 1322
+category = "Poetry & drama"
+title = "Leaves of Grass"
+author = "Walt Whitman"
+
+[[book]]
+id = 12242
+category = "Poetry & drama"
+title = "Poems by Emily Dickinson"
+author = "Emily Dickinson"
+
+[[book]]
+id = 7164
+category = "Poetry & drama"
+title = "Gitanjali"
+author = "Rabindranath Tagore"
+
+[[book]]
+id = 1524
+category = "Poetry & drama"
+title = "Hamlet"
+author = "William Shakespeare"
+
+[[book]]
+id = 2542
+category = "Poetry & drama"
+title = "A Doll's House"
+author = "Henrik Ibsen"
+
+[[book]]
+id = 844
+category = "Poetry & drama"
+title = "The Importance of Being Earnest"
+author = "Oscar Wilde"
+
+[[book]]
+id = 7986
+category = "Poetry & drama"
+title = "The Cherry Orchard and Other Plays"
+author = "Anton Chekhov"
+
+[[book]]
+id = 18338
+category = "Poetry & drama"
+title = "The Complete Poems of Paul Laurence Dunbar"
+author = "Paul Laurence Dunbar"
+
+[[book]]
+id = 1727
+category = "Poetry & drama"
+title = "The Odyssey"
+author = "Homer"
+
+[[book]]
+id = 2002
+category = "Poetry & drama"
+title = "Sonnets from the Portuguese"
+author = "Elizabeth Barrett Browning"
+
+
+# --- History & memoir --------------------------------------------
+[[book]]
+id = 23
+category = "History & memoir"
+title = "Narrative of the Life of Frederick Douglass"
+author = "Frederick Douglass"
+
+[[book]]
+id = 11030
+category = "History & memoir"
+title = "Incidents in the Life of a Slave Girl"
+author = "Harriet Jacobs"
+
+[[book]]
+id = 15399
+category = "History & memoir"
+title = "The Interesting Narrative of the Life of Olaudah Equiano"
+author = "Olaudah Equiano"
+
+[[book]]
+id = 2376
+category = "History & memoir"
+title = "Up from Slavery"
+author = "Booker T. Washington"
+
+[[book]]
+id = 408
+category = "History & memoir"
+title = "The Souls of Black Folk"
+author = "W. E. B. Du Bois"
+
+[[book]]
+id = 20203
+category = "History & memoir"
+title = "The Autobiography of Benjamin Franklin"
+author = "Benjamin Franklin"
+
+[[book]]
+id = 7142
+category = "History & memoir"
+title = "The History of the Peloponnesian War"
+author = "Thucydides"
+
+[[book]]
+id = 2397
+category = "History & memoir"
+title = "The Story of My Life"
+author = "Helen Keller"
+
+[[book]]
+id = 1325
+category = "History & memoir"
+title = "Twenty Years at Hull-House"
+author = "Jane Addams"
+
+[[book]]
+id = 10636
+category = "History & memoir"
+title = "The Travels of Marco Polo, Volume 1"
+author = "Marco Polo"
+
+[[book]]
+id = 1674
+category = "History & memoir"
+title = "The Narrative of Sojourner Truth"
+author = "Sojourner Truth"
+
+
+# --- Philosophy & religion ---------------------------------------
+[[book]]
+id = 2680
+category = "Philosophy & religion"
+title = "Meditations"
+author = "Marcus Aurelius"
+
+[[book]]
+id = 216
+category = "Philosophy & religion"
+title = "Tao Te Ching"
+author = "Laozi"
+
+[[book]]
+id = 1232
+category = "Philosophy & religion"
+title = "The Prince"
+author = "Niccolò Machiavelli"
+
+[[book]]
+id = 3420
+category = "Philosophy & religion"
+title = "A Vindication of the Rights of Woman"
+author = "Mary Wollstonecraft"
+
+[[book]]
+id = 1497
+category = "Philosophy & religion"
+title = "The Republic"
+author = "Plato"
+
+[[book]]
+id = 4363
+category = "Philosophy & religion"
+title = "Beyond Good and Evil"
+author = "Friedrich Nietzsche"
+
+[[book]]
+id = 3330
+category = "Philosophy & religion"
+title = "The Analects"
+author = "Confucius"
+
+[[book]]
+id = 2388
+category = "Philosophy & religion"
+title = "The Bhagavad Gita (The Song Celestial)"
+author = "Edwin Arnold (translator)"
+year = 1885  # Arnold's translation
+
+
+# --- Science & nature --------------------------------------------
+[[book]]
+id = 1228
+category = "Science & nature"
+title = "On the Origin of Species"
+author = "Charles Darwin"
+
+[[book]]
+id = 205
+category = "Science & nature"
+title = "Walden"
+author = "Henry David Thoreau"
+
+[[book]]
+id = 14474
+category = "Science & nature"
+title = "The Chemical History of a Candle"
+author = "Michael Faraday"
+
+[[book]]
+id = 30155
+category = "Science & nature"
+title = "Relativity: The Special and General Theory"
+author = "Albert Einstein"
+
+[[book]]
+id = 33504
+category = "Science & nature"
+title = "Opticks"
+author = "Isaac Newton"
+
+[[book]]
+id = 46036
+category = "Science & nature"
+title = "The Sidereal Messenger"
+author = "Galileo Galilei"
+
+
+# --- Children's --------------------------------------------------
+[[book]]
+id = 11
+category = "Children's"
+title = "Alice's Adventures in Wonderland"
+author = "Lewis Carroll"
+
+[[book]]
+id = 45
+category = "Children's"
+title = "Anne of Green Gables"
+author = "L. M. Montgomery"
+
+[[book]]
+id = 113
+category = "Children's"
+title = "The Secret Garden"
+author = "Frances Hodgson Burnett"
+
+[[book]]
+id = 2591
+category = "Children's"
+title = "Grimms' Fairy Tales"
+author = "Brothers Grimm"
+
+[[book]]
+id = 16
+category = "Children's"
+title = "Peter Pan"
+author = "J. M. Barrie"
+
+[[book]]
+id = 55
+category = "Children's"
+title = "The Wonderful Wizard of Oz"
+author = "L. Frank Baum"
+
+[[book]]
+id = 514
+category = "Children's"
+title = "Little Women"
+author = "Louisa May Alcott"
+
+[[book]]
+id = 1597
+category = "Children's"
+title = "Andersen's Fairy Tales"
+author = "Hans Christian Andersen"
+
+[[book]]
+id = 271
+category = "Children's"
+title = "Black Beauty"
+author = "Anna Sewell"
+
+[[book]]
+id = 500
+category = "Children's"
+title = "The Adventures of Pinocchio"
+author = "Carlo Collodi"
+
+[[book]]
+id = 11757
+category = "Children's"
+title = "The Velveteen Rabbit"
+author = "Margery Williams"
+
+
+# --- Textbooks ---------------------------------------------------
+[[book]]
+id = 75107
+category = "Textbooks"
+title = "Sketch of the Analytical Engine"
+author = "Luigi Menabrea & Ada Lovelace"
+year = 1843
+description = """Luigi Menabrea's 1842 account of Charles Babbage's planned Analytical Engine, \
+a general-purpose mechanical computer, translated from French by Ada Lovelace. Her own notes \
+run to about three times the length of the paper. In them she explains how the machine could \
+be programmed with punched cards and, in Note G, sets out step by step how it would calculate \
+Bernoulli numbers, often called the first published computer program."""
+
+[[book]]
+id = 672
+category = "Textbooks"
+title = "The Secret Guide to Computers"
+author = "Russ Walter"
+
+[[book]]
+id = 15114
+category = "Textbooks"
+title = "An Investigation of the Laws of Thought"
+author = "George Boole"

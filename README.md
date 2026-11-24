@@ -38,14 +38,26 @@ python -m unittest discover -s tests -v   # headless smoke tests (no Ollama need
 - **Accounts:** there are no users until someone signs up (*Sign in > Create an account*). Accounts and orders are saved to `.data/store.json` (git-ignored; set `ANJS_DATA_DIR` to move it). Passwords are salted and hashed, but this is a local stand-in for the real backend (`gui/store.py`, `gui/auth.py`). Face ID doesn't recognize anyone yet because no account has a face enrolled.
 - **Desktop layout:** the book grid shows 2 cards per row on a phone-sized window, 3 from 540 px and 4 from 760 px (`BREAKPOINTS` in `gui/pages/catalog.py`). Text-heavy pages are capped in width and centred.
 - **Orders:** *Checkout* places the order straight away (no payment yet). The Orders tab has **Tracking** (orders on the way) and **History** (every book you've bought, with *Buy again*).
-- **Ask (AI book chat):** chat with a local LLM through [Ollama](https://ollama.com). It knows the catalog and, when you're signed in, what you've already bought.
+- **Ask (AI book chat):** chat with a local LLM through [Ollama](https://ollama.com). It knows the catalogue and, when you're signed in, what you've already bought.
   ```bash
   ollama pull llama3.2:3b
   ollama serve        # or just open the Ollama app
   ```
   Use another model with `ANJS_LLM_MODEL=<name>`, or another server with `ANJS_LLM_HOST=http://host:11434`.
 - **Theme switch:** `View > Mint theme` (Ctrl+T) in the menu bar, or the *Appearance* button on the Account tab once signed in. Colours live in `gui/theme.py`, so a third theme is one more `Palette`.
-- **Placeholders to replace:** `gui/data.py` holds invented sample books. The camera box is a drawn placeholder, not a live camera feed. Order status never moves past "processing" because there is no shipping backend yet.
+- **Settings:** copy `.env.example` to `.env` (git-ignored) to change the camera, face-model paths, match thresholds or the Ollama host.
+- **Placeholders to replace:** order status never moves past "processing" because there is no shipping backend yet. The Terms, Privacy and Help links on the sign-up page are text only.
+
+### Book catalogue
+
+The store sells 100 public-domain books from [Project Gutenberg](https://www.gutenberg.org), picked by hand across 12 shelves, with descriptions and star ratings from [Open Library](https://openlibrary.org).
+
+- `catalog/selection.toml`: the list of books (Gutenberg number, shelf, display title, author). Edit this to change the catalogue.
+- `catalog/catalog.json` and `catalog/covers/`: built by the import script and committed, so you don't need to run it.
+- `python scripts/build_catalog.py`: fetches any books new to the list (`--refresh` fetches everything again).
+- Search (`gui/search.py`) covers titles, authors, subjects and descriptions, ranks title matches highest, and corrects misspellings.
+- Tests use 8 invented sample books (`ANJS_CATALOG=sample`); without `catalog.json` the app falls back to them too.
+- Design diagrams (collaboration and sequence) are in `assets/`.
 
 ### Face ID Login
 

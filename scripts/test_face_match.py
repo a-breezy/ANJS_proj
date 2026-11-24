@@ -1,13 +1,12 @@
 """Temporary webcam test for YOLO face detection and SFace recognition."""
 from pathlib import Path
+import sys
 
 import cv2
 from ultralytics import YOLO
 
-MODELS = Path(__file__).resolve().parents[1] / ".data" / "models"
-YOLO_FILE = MODELS / "yolov8n-face.pt"
-YUNET_FILE = MODELS / "face_detection_yunet_2023mar.onnx"
-SFACE_FILE = MODELS / "face_recognition_sface_2021dec.onnx"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from gui.face_camera import CAMERA_INDEX, SFACE_FILE, YOLO_FILE, YUNET_FILE
 
 
 def get_features(frame, box, landmarks, recognizer):
@@ -41,7 +40,7 @@ def main():
     yolo = YOLO(str(YOLO_FILE))
     landmarks = cv2.FaceDetectorYN.create(str(YUNET_FILE), "", (320, 320))
     recognizer = cv2.FaceRecognizerSF.create(str(SFACE_FILE), "")
-    camera = cv2.VideoCapture(0)
+    camera = cv2.VideoCapture(CAMERA_INDEX)
     if not camera.isOpened():
         print("Camera could not open.")
         return

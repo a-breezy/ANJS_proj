@@ -36,6 +36,7 @@ class MainWindow(QMainWindow):
             self.stack.addWidget(screen)
 
         self.shell.sign_in_requested.connect(self.show_login)
+        self.shell.sign_up_requested.connect(self.show_signup)
         self.shell.sign_out_requested.connect(self._on_signed_out)
         self.login.back_requested.connect(self.show_home)
         self.login.sign_up_requested.connect(self.show_signup)

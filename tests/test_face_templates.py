@@ -1,7 +1,10 @@
 """Tests for face enrollment storage. No webcam is needed."""
+import os
 import tempfile
 import unittest
 from pathlib import Path
+
+os.environ.setdefault("ANJS_CATALOG", "sample")  # tests use the 8 sample books
 
 from gui import auth
 from gui.store import Store

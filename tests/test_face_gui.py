@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("ANJS_CATALOG", "sample")  # tests use the 8 sample books
 
 from PySide6.QtWidgets import QApplication, QDialog
 
