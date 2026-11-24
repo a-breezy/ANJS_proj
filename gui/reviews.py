@@ -158,6 +158,10 @@ class ReviewService:
                 "suspended": suspended,
             }
 
+        # One review per signed-in author per book: add_review replaces their
+        # earlier one. A blocked comment returned above, so it never replaces.
+        # TODO(team): decide visitor limits (visitors have no email, so they
+        # can still post several reviews on one book).
         verified = self.has_purchased(author_email, book_id)
         entry = {
             "author_name": author_name.strip() or "Visitor",

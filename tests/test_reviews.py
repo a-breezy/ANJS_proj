@@ -151,5 +151,33 @@ class PromotionTests(UserReviewCase):
         self.assertEqual(self.role(), "VC")
 
 
+class OneReviewPerUserTests(UserReviewCase):
+    def test_same_user_replaces_review(self):
+        self.post("first")
+        self.service.submit_review(self.book.id, "Ann", "ann@example.com", 5, "second")
+        self.assertEqual(self.service.rating_summary(self.book.id), (5.0, 1))
+        self.assertEqual(self.service.reviews_for(self.book.id)[0]["comment"], "second")
+
+    def test_two_users_count_two(self):
+        auth.register(self.store, "Bob", "bob@example.com", "password123")
+        self.post("a")
+        self.post("b", email="bob@example.com")
+        self.assertEqual(self.service.rating_summary(self.book.id)[1], 2)
+
+    def test_blocked_comment_keeps_first_review(self):
+        self.service.submit_review(self.book.id, "Ann", "ann@example.com", 4, "good")
+        result = self.post("spam scam trash idiot")
+        self.assertFalse(result["accepted"])
+        reviews = self.service.reviews_for(self.book.id)
+        self.assertEqual((len(reviews), reviews[0]["comment"], reviews[0]["stars"]), (1, "good", 4))
+
+    def test_verified_buyer_recomputed_on_replace(self):
+        self.post("before purchase")
+        self.store.add_order("ann@example.com", [self.book.id])
+        self.post("after purchase")
+        review = self.service.reviews_for(self.book.id)[0]
+        self.assertTrue(review["verified_buyer"])
+
+
 if __name__ == "__main__":
     unittest.main()

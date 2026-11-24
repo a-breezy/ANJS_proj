@@ -170,9 +170,17 @@ class Store:
         return [int(k) for k, v in self._data["reviews"].items() if v]
 
     def add_review(self, book_id: int, entry: dict) -> None:
-        self.update(
-            lambda data: data["reviews"].setdefault(str(book_id), []).append(entry)
-        )
+        """Save a review. A signed-in author (non-empty ``author_email``) has
+        one review per book: a new one replaces their earlier one."""
+        email = entry.get("author_email", "")
+
+        def add(data: dict) -> None:
+            reviews = data["reviews"].setdefault(str(book_id), [])
+            if email:
+                reviews[:] = [r for r in reviews if r.get("author_email") != email]
+            reviews.append(entry)
+
+        self.update(add)
 
     def get_taboo_words(self) -> list[str] | None:
         """The taboo list, or None if it has never been initialised."""
